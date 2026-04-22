@@ -27,6 +27,8 @@ import sys
 import time
 from pathlib import Path
 
+DIFF_LINE_CAP = 500
+
 
 # ── Template composition per command ──────────────────────────────────────
 #
@@ -104,6 +106,72 @@ def find_context_db():
     if os.path.isdir("context-db"):
         return "context-db"
     return "."
+
+
+def collect_recent_changes(context_db_rel, n):
+    """Collect recent git changes in context-db/. Returns formatted block, or None.
+
+    n=0: uncommitted changes only.
+    n>0: uncommitted + last n commits touching context-db/.
+
+    If combined diff exceeds DIFF_LINE_CAP, falls back to --stat summary.
+    Mirrors the helper in context-db-main-agent.py.
+    """
+    if context_db_rel == ".":
+        return None
+
+    def run(args):
+        try:
+            r = subprocess.run(
+                args, capture_output=True, text=True, timeout=10,
+            )
+            return r.stdout if r.returncode == 0 else ""
+        except (subprocess.SubprocessError, FileNotFoundError):
+            return ""
+
+    sections = []
+
+    uncommitted_full = run(["git", "diff", "HEAD", "--", context_db_rel])
+    if uncommitted_full.strip():
+        uncommitted_stat = run(
+            ["git", "diff", "HEAD", "--stat", "--", context_db_rel]
+        )
+        sections.append(
+            ("## Uncommitted Changes", uncommitted_stat, uncommitted_full)
+        )
+
+    if n > 0:
+        commits_full = run(
+            ["git", "log", "-n", str(n), "-p", "--", context_db_rel]
+        )
+        if commits_full.strip():
+            commits_stat = run([
+                "git", "log", "-n", str(n), "--stat",
+                "--format=%h %s", "--", context_db_rel,
+            ])
+            header = f"## Last {n} Commit{'s' if n != 1 else ''}"
+            sections.append((header, commits_stat, commits_full))
+
+    if not sections:
+        return None
+
+    total_lines = sum(len(full.splitlines()) for _, _, full in sections)
+    use_stat = total_lines > DIFF_LINE_CAP
+
+    out = []
+    if use_stat:
+        out.append(
+            f"(Diff exceeded {DIFF_LINE_CAP} lines — showing file stats only. "
+            f"Use `git diff HEAD -- {context_db_rel}/` or "
+            f"`git log -p -n {n} -- {context_db_rel}/` for full content.)\n"
+        )
+    for header, stat, full in sections:
+        out.append(header)
+        out.append("")
+        out.append((stat if use_stat else full).strip())
+        out.append("")
+
+    return "\n".join(out).strip()
 
 
 # ── Template loading ──────────────────────────────────────────────────────
@@ -240,6 +308,11 @@ def main():
     parser.add_argument("--model", default="haiku")
     parser.add_argument("--context-db-only-review", action="store_true",
                         help="Review only flags convention issues from context-db")
+    parser.add_argument("--use-git-diff", nargs="?", const=3, default=None,
+                        type=int, metavar="N",
+                        help="Prepend recent context-db git changes "
+                             "(prompt command only). N=commits (default 3, "
+                             "0=uncommitted only)")
     parser.add_argument("--rerun-init", action="store_true",
                         help="Reload init templates after response")
     parser.add_argument("--debug", action="store_true")
@@ -266,6 +339,13 @@ def main():
     # (content-first ordering — model sees what to look up before being told how)
     template_vars = dict(toc=toc, context_db_rel=context_db_rel,
                          user_guidance_note=user_guidance_note)
+    # For prompt command with --use-git-diff, compute the recent-changes block
+    recent_changes_block = None
+    if args.command == "prompt" and args.use_git_diff is not None:
+        recent_changes_block = collect_recent_changes(
+            context_db_rel, args.use_git_diff,
+        )
+
     parts = []
     for directory, name in SYSTEM_TEMPLATES[key]:
         template = load_template(directory, name)
@@ -274,6 +354,12 @@ def main():
         if name == "read-mechanics" and args.prompt:
             header = "Main Prompt" if args.command == "prompt" else "User Guidance"
             parts.append(f"\n# {header}\n\n{args.prompt}\n")
+        # Inject recent-changes block after read-mechanics (prompt command)
+        if name == "read-mechanics" and recent_changes_block:
+            rc_template = load_template("main-agent", "recent-changes")
+            parts.append(fill_template(
+                rc_template, recent_changes_block=recent_changes_block,
+            ))
 
     system_prompt = "\n".join(parts)
 
