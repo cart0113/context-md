@@ -17,6 +17,6 @@ description:
   TOC when relevant.
 -->
 
-# On Startup
+# On Start
 
 <replace this with project orientation the agent needs before doing work>

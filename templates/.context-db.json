@@ -23,5 +23,14 @@
   // maintain always runs in main-agent (writes files)
   "maintain": {
     "mode": "main-agent"
-  }
+  },
+
+  // Inlined once per session at the top of /context-db load-on-start-context.
+  // Use for orienting content the agent needs to work on the project
+  // (heavier material is OK here — loads once).
+  "on_start": ["*-project/ON_START.md"],
+
+  // Inlined right before user instructions on every /context-db call.
+  // Keep BRIEF — real estate is at a premium.
+  "on_all": ["*-project/ON_ALL.md"]
 }

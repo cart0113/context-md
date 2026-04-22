@@ -46,19 +46,17 @@ Remaining:
 - Test pre-review with haiku
 - Delete `old-prompts/` once all commands are verified
 
-## Startup context delivery — resolved
+## On-start context delivery — resolved
 
-Replaced hook-based `load-manual` compositing with 4 static rule files
-(`templates/rules/startup-*.md`). Rules survive compaction, require no config.
-Sub-agent integration is handled by the rules themselves — they tell the agent
-to call `/context-db prompt`, `/context-db pre-review`, etc., and the mode
-config determines whether those run as sub-agents. `load-manual` simplified to
-single-section loader for mid-conversation use.
-
-Extended 2026-04-22 with two-tier always-load config (`on_startup` + `on_all`)
-and a new `load-startup-rule` subcommand that inlines their content.
-`startup-on-demand.md` now delegates to that subcommand so adding always-loaded
-files is a config edit, not a rule edit. See `load-startup-rule-sub-command.md`.
+Replaced hook-based `load-manual` compositing with a single rule file
+(`templates/rules/context-db.md`) that tells the agent to run
+`/context-db load-on-start-context`. Rules survive compaction, require no
+config. Two-tier always-load config (`on_start` + `on_all`) wires in
+project-specific files that get inlined at session start (`on_start`) or on
+every command (`on_all`). The 4 preset rule files (on-demand, reader,
+contributor, autonomous) were dropped 2026-04-22 — workflow choice now belongs
+in the project's `ON_START.md`, not in separate rules. See
+`load-on-start-context-sub-command.md`.
 
 ## Main-agent skill is working well
 

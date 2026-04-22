@@ -18,7 +18,7 @@ description:
     - a naming or structural rule easy to break accidentally
 
   Orientation content and anything the agent only needs once belongs in
-  ON_STARTUP.md or a regular context-db file — not here.
+  ON_START.md or a regular context-db file — not here.
 -->
 
 # On All

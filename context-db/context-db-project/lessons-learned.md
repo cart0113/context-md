@@ -2,7 +2,7 @@
 description:
   Lessons from building context delivery — late-session recall, pre-loading
   pitfalls, prompt engineering for cheap models, relative paths, rules vs hooks
-  for startup context. Applies to the unified /context-db skill.
+  for on-start context. Applies to the unified /context-db skill.
 ---
 
 # Lessons Learned
@@ -84,11 +84,12 @@ Rules (`.claude/rules/`) survive compaction — they're system prompt, re-inject
 every turn. Hook output lives in conversation and gets compacted away. Startup
 instructions belong in rules, not hooks.
 
-The clean separation: rules tell the agent WHAT to do and WHEN (e.g., "before
-coding, run `/context-db pre-review`"). Config (`.context-db.json`) controls HOW
-commands execute — sub-agent vs main-agent, which model. The rule doesn't need
-to know about mode. Four preset rule files cover the spectrum: on-demand,
-reader, contributor, autonomous.
+The clean separation: the single rule (`rules/context-db.md`) tells the agent to
+run `/context-db load-on-start-context` on session start. Config
+(`.context-db.json`) controls HOW commands execute (sub-agent vs main-agent,
+which model) and WHICH project files are always-loaded (`on_start`, `on_all`).
+Workflow choice (reader vs contributor vs autonomous) lives in the project's
+`ON_START.md`, not in separate rule presets.
 
 ## Constrain navigation to TOC + Read only
 

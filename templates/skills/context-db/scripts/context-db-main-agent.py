@@ -33,7 +33,6 @@ COMMANDS = ["prompt", "pre-review", "review", "update", "maintain"]
 
 # Available sections for load-manual. Each entry is (name, description).
 MANUAL_SECTIONS = [
-    ("on-demand",            "Don't browse context-db — wait for /context-db commands"),
     ("read-mechanics",       "How to navigate context-db via TOC script"),
     ("prompt",               "Instructions for prompt command"),
     ("context-usage",        "Context-db is a map, not truth — verify against code"),
@@ -52,9 +51,9 @@ DEFAULT_CONFIG = {
         "model": "haiku",
     },
     # Globs (relative to context-db/) whose content is inlined on session
-    # startup via `load-startup-rule`. Use for orienting content the agent
+    # start via `load-on-start-context`. Use for orienting content the agent
     # needs once per session.
-    "on_startup": [],
+    "on_start": [],
     # Globs inlined on EVERY subcommand invocation (prompt, pre-review,
     # review, update, maintain). Keep BRIEF — real estate is at a premium.
     "on_all": [],
@@ -95,7 +94,7 @@ def load_config(config_path):
         for cmd in COMMANDS:
             if cmd in user:
                 config[cmd].update(user[cmd])
-        for key in ("on_startup", "on_all"):
+        for key in ("on_start", "on_all"):
             if key in user:
                 config[key] = list(user[key])
     return config
@@ -226,7 +225,7 @@ def collect_recent_changes(context_db_rel, n):
 
 
 # ── Pattern expansion and file inlining ─────────────────────────────────────
-# Used by `read`, `load-startup-rule`, and the --load-startup-rule /
+# Used by `read`, `load-on-start-context`, and the --load-on-start-context /
 # --load-always flags. Patterns are globs resolved relative to base_dir
 # (context-db/ by default). Folders match expand to every file underneath.
 
@@ -358,9 +357,9 @@ def cmd_load_manual(args):
                    context_db_rel=context_db_rel)
 
 
-# ── on_all / on_startup emitters ────────────────────────────────────────────
-# Shared between the load-startup-rule subcommand and the
-# --load-startup-rule flag on other subcommands. Content is printed raw so
+# ── on_all / on_start emitters ────────────────────────────────────────────
+# Shared between the load-on-start-context subcommand and the
+# --load-on-start-context flag on other subcommands. Content is printed raw so
 # the author of the .md file controls their own framing — no preamble, no
 # section header, no path attribution injected by the tool.
 
@@ -375,14 +374,56 @@ def emit_on_all(config, context_db_rel):
         print(f"\n{content}")
 
 
-def emit_on_startup(config, context_db_rel):
-    """Print on_startup content raw. No-op if empty or nothing matches."""
-    patterns = config.get("on_startup", [])
+def emit_on_start(config, context_db_rel):
+    """Print on_start content raw. No-op if empty or nothing matches."""
+    patterns = config.get("on_start", [])
     if not patterns:
         return
     content = inline_patterns(patterns, context_db_rel)
     if content:
         print(f"\n{content}")
+
+
+def emit_always_read_notice(config, context_db_rel):
+    """For write commands (update, maintain), warn the agent which files
+    are inlined every time so it applies strong judgement before writing
+    to them. Skips entirely if nothing is configured.
+    """
+    on_start = expand_patterns(
+        config.get("on_start", []), context_db_rel
+    )
+    on_all = expand_patterns(config.get("on_all", []), context_db_rel)
+    if not on_start and not on_all:
+        return
+
+    lines = ["\n# Always-Read Files", ""]
+    lines.append(
+        "The files listed below are inlined into the agent's context "
+        "automatically. Every line in them costs tokens on every "
+        "invocation, so real estate is at a premium. Use strong "
+        "judgement before writing to them — most learnings belong in a "
+        "regular context-db file, not here. When in doubt, ask the user "
+        "before adding anything."
+    )
+    lines.append("")
+    if on_start:
+        lines.append(
+            "These files are the `on_start` set — inlined once per "
+            "session at start:"
+        )
+        for p in on_start:
+            lines.append(f"- `{p}`")
+        lines.append("")
+    if on_all:
+        lines.append(
+            "These files are the `on_all` set — inlined before every "
+            "/context-db command (prompt, pre-review, review, update, "
+            "maintain):"
+        )
+        for p in on_all:
+            lines.append(f"- `{p}`")
+        lines.append("")
+    print("\n".join(lines).rstrip())
 
 
 def cmd_read(args):
@@ -399,8 +440,8 @@ def cmd_read(args):
     print("\n".join(inline_file(f) for f in files))
 
 
-def cmd_load_startup_rule(args, config):
-    """Print the session-startup rule: inlined startup + always content,
+def cmd_load_on_start_context(args, config):
+    """Print the on-start context: read-mechanics + context-usage + inlined on_start and on_all files,
     then the read mechanics the agent needs to navigate context-db.
     """
     toc = find_toc_script()
@@ -408,7 +449,7 @@ def cmd_load_startup_rule(args, config):
 
     print_template("read-mechanics", toc=toc, context_db_rel=context_db_rel)
     print_template("context-usage")
-    emit_on_startup(config, context_db_rel)
+    emit_on_start(config, context_db_rel)
     emit_on_all(config, context_db_rel)
 
 
@@ -436,6 +477,7 @@ def cmd_main_agent(command, prompt, cmd_config, config, debug=False):
         print_template("persist-to-context-db")
         print_template("update-general",
                         context_db_rel=context_db_rel)
+        emit_always_read_notice(config, context_db_rel)
         emit_on_all(config, context_db_rel)
         if prompt:
             print_section("update-user-instructions", prompt)
@@ -536,13 +578,14 @@ def cmd_maintain(args, config):
     context_db_rel = find_context_db()
     target_path = args.path if args.path else f"{context_db_rel}/"
 
-    if getattr(args, "load_startup_rule", False):
-        emit_on_startup(config, context_db_rel)
+    if getattr(args, "load_on_start_context", False):
+        emit_on_start(config, context_db_rel)
 
     print_template("write-mechanics", toc=toc, context_db_rel=context_db_rel)
     print_template("write-content-guide")
     print_template("maintain-instructions", toc=toc,
                     context_db_rel=context_db_rel, target_path=target_path)
+    emit_always_read_notice(config, context_db_rel)
     emit_on_all(config, context_db_rel)
 
 
@@ -562,8 +605,8 @@ def add_mode_flags(sub):
     sub.add_argument("--model", choices=MODEL_CHOICES)
     sub.add_argument("--config", default=".context-db.json")
     sub.add_argument("--debug", action="store_true")
-    sub.add_argument("--load-startup-rule", action="store_true",
-                     help="Also inline on_startup content before the "
+    sub.add_argument("--load-on-start-context", action="store_true",
+                     help="Also inline on_start content before the "
                           "command output (use for sub-agents that missed "
                           "the session-start load).")
 
@@ -583,14 +626,14 @@ def dispatch_command(args, config):
 
         return
 
-    # on_startup content optionally goes at the top via --load-startup-rule
-    # (orientation-first for sub-agents that missed the session-start load).
+    # on_start content optionally goes at the top via --load-on-start-context
+    # (orientation-first for sub-agents that missed the on-start load).
     # on_all content is emitted inside the handlers, placed right before
     # the user instructions — recency matters, so last-thing-read is the
     # always-on rules.
     context_db_rel = find_context_db()
-    if getattr(args, "load_startup_rule", False):
-        emit_on_startup(config, context_db_rel)
+    if getattr(args, "load_on_start_context", False):
+        emit_on_start(config, context_db_rel)
 
     # Build effective config: defaults ← command overrides ← CLI flags
     cmd_config = get_command_config(config, command)
@@ -685,10 +728,10 @@ def main():
     rd.add_argument("paths", nargs="+",
                     help="One or more paths or glob patterns")
 
-    # load-startup-rule — session-startup orientation
+    # load-on-start-context — session-start orientation
     lsr = subs.add_parser(
-        "load-startup-rule",
-        help="Emit session-startup rule: on_startup + on_all + "
+        "load-on-start-context",
+        help="Emit on-start context: on_start + on_all + "
              "read mechanics/usage")
     lsr.add_argument("--config", default=".context-db.json")
 
@@ -696,8 +739,8 @@ def main():
     mt = subs.add_parser("maintain", help="Audit and maintain context-db")
     mt.add_argument("path", nargs="?", default="")
     mt.add_argument("--config", default=".context-db.json")
-    mt.add_argument("--load-startup-rule", action="store_true",
-                    help="Also inline on_startup content before the "
+    mt.add_argument("--load-on-start-context", action="store_true",
+                    help="Also inline on_start content before the "
                          "command output.")
 
     args = parser.parse_args()
@@ -716,8 +759,8 @@ def main():
         cmd_read_all(args)
     elif args.command == "read":
         cmd_read(args)
-    elif args.command == "load-startup-rule":
-        cmd_load_startup_rule(args, config)
+    elif args.command == "load-on-start-context":
+        cmd_load_on_start_context(args, config)
     elif args.command == "maintain":
         cmd_maintain(args, config)
     else:

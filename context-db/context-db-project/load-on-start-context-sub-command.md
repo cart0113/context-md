@@ -1,20 +1,20 @@
 ---
 description:
-  load-startup-rule subcommand and the on_startup / on_all config fields —
+  load-on-start-context subcommand and the on_start / on_all config fields —
   two-tier always-loaded content, inlined (not referenced) so it lands in
   context reliably.
 ---
 
 ## What it does
 
-`load-startup-rule` emits the session-startup orientation in this order:
+`load-on-start-context` emits the on-start context in this order:
 
 1. `read-mechanics` — how to navigate `context-db/` via the TOC script
 2. `context-usage` — context-db is a map, not truth; verify against code
-3. `on_startup` files — inlined raw, frontmatter stripped
+3. `on_start` files — inlined raw, frontmatter stripped
 4. `on_all` files — inlined raw, frontmatter stripped
 
-Rule files (`templates/rules/startup-*.md`) delegate to this command so changes
+Rule files (`templates/rules/context-db.md`) delegate to this command so changes
 to the two config lists propagate without editing rules.
 
 Inlined files are printed as-is. The tool adds no preamble, no section header,
@@ -27,7 +27,7 @@ it, so it is not taught here.
 
 ## Usage
 
-    /context-db load-startup-rule
+    /context-db load-on-start-context
 
 No arguments. Config is read from `.context-db.json`.
 
@@ -35,8 +35,8 @@ No arguments. Config is read from `.context-db.json`.
 
 Two top-level lists of glob patterns, relative to `context-db/`:
 
-- `on_startup` — fires once per session via the startup rule, and on demand via
-  the `--load-startup-rule` flag on other subcommands. Use for orienting content
+- `on_start` — fires once per session via the on-start context, and on demand via
+  the `--load-on-start-context` flag on other subcommands. Use for orienting content
   an agent needs to read to work effectively on the project. Heavier content is
   OK here; it loads once.
 - `on_all` — fires automatically at the top of every subcommand invocation
@@ -51,25 +51,25 @@ Example:
 
 ```jsonc
 {
-  "on_startup": ["*-project/ON_STARTUP.md"],
+  "on_start": ["*-project/ON_START.md"],
   "on_all": ["*-project/ON_ALL.md"],
 }
 ```
 
-Boilerplate files live at `templates/context-db-files/ON_STARTUP.md` and
+Boilerplate files live at `templates/context-db-files/ON_START.md` and
 `templates/context-db-files/ON_ALL.md` — copy into a project's `<name>-project/`
 folder and populate.
 
 ## Flags on other subcommands
 
-`--load-startup-rule` on `prompt`, `pre-review`, `review`, `update`, and
-`maintain` prepends the expanded `on_startup` block to that command's output.
-Intended for sub-agent invocations that missed the session-start load. `on_all`
+`--load-on-start-context` on `prompt`, `pre-review`, `review`, `update`, and
+`maintain` prepends the expanded `on_start` block to that command's output.
+Intended for sub-agent invocations that missed the on-start load. `on_all`
 fires on every subcommand automatically — no flag needed.
 
 ## Placement in command output
 
-- `on_startup` is emitted at the very top when the flag is used (orientation
+- `on_start` is emitted at the very top when the flag is used (orientation
   first).
 - `on_all` is emitted at the **end** of each command's output, right before the
   user's instructions block (or last, if the command has no user-instructions
@@ -84,12 +84,12 @@ the bytes in front of the model is not. The `read` subcommand exists for the
 same reason — anywhere the agent must see content, we emit the content.
 
 **Two tiers.** `on_all` runs on every subcommand, so it multiplies across the
-session and must stay small. `on_startup` runs once per session and can carry
+session and must stay small. `on_start` runs once per session and can carry
 more orienting material. Mixing the two would either bloat every command or
-starve the startup of useful context.
+starve on-start of useful context.
 
-**Auto-fire for `on_all`, flag-gated for `on_startup`.** The always-tier is
-cheap enough to include unconditionally. Startup content is heavier, so it's
+**Auto-fire for `on_all`, flag-gated for `on_start`.** The always-tier is
+cheap enough to include unconditionally. On-start content is heavier, so it's
 opt-in via the flag (and fires automatically only via the rule file at session
 start).
 
