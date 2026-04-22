@@ -32,8 +32,18 @@ Run `--help` to see available sections with descriptions.
 
 ## Design rationale
 
-Startup instructions are now delivered via rule files
+Startup instructions are delivered via rule files
 (`templates/rules/startup-*.md`) that users copy or symlink to
 `.claude/rules/context-db.md`. Rules survive compaction and require no hook or
 config. `load-manual` is the mid-conversation escape hatch for loading
 individual instruction sections on demand.
+
+Distinct from two sibling subcommands:
+
+- `load-startup-rule` inlines the project's always-load content (see
+  `load-startup-rule-sub-command.md`). That's about project-specific bytes.
+- `read` inlines arbitrary file/folder content by path or glob. That's a generic
+  content-delivery primitive.
+
+`load-manual` is neither — it loads skill-internal instruction templates (how
+the agent should behave), not project content.
