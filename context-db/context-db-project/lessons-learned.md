@@ -43,6 +43,14 @@ sub-agent on track. Per-command variants are needed because "what to find"
 differs (prompt: applicable context, pre-review: applicable standards, review:
 convention violations).
 
+## Mandatory rules go last, not first
+
+Recency wins. Rules placed at the top of a composed prompt get diluted by
+everything after; rules placed just before the user's instructions stay freshest
+when the model acts. `on_all` content is emitted at the end of each command's
+output (before the user-instructions block), not prepended. The tool also adds
+no framing — file authors own their own preamble.
+
 ## Content-first ordering matters
 
 Prompt before navigation instructions produces better results. The model reads

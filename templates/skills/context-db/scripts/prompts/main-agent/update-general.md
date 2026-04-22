@@ -24,9 +24,9 @@ file layouts. The code is the source of truth for those.
 If what you are persisting is critical enough that the next agent must see it
 every session (or on every subcommand), emit a single concise hint line after
 your update — e.g.
-`hint: consider adding <file> to load_on_startup in .context-db.json`. Only
-suggest this when the content is clearly load-bearing; real estate in those
-files is at a premium.
+`hint: consider adding <file> to on_startup in .context-db.json`. Only suggest
+this when the content is clearly load-bearing; real estate in those files
+(especially on_all) is at a premium.
 
 If you are unsure or want clarification, ask the user.
 

@@ -55,11 +55,10 @@ to call `/context-db prompt`, `/context-db pre-review`, etc., and the mode
 config determines whether those run as sub-agents. `load-manual` simplified to
 single-section loader for mid-conversation use.
 
-Extended 2026-04-22 with two-tier always-load config (`load_on_startup` +
-`load_always`) and a new `load-startup-rule` subcommand that inlines their
-content. `startup-on-demand.md` now delegates to that subcommand so adding
-always-loaded files is a config edit, not a rule edit. See
-`load-startup-rule-sub-command.md`.
+Extended 2026-04-22 with two-tier always-load config (`on_startup` + `on_all`)
+and a new `load-startup-rule` subcommand that inlines their content.
+`startup-on-demand.md` now delegates to that subcommand so adding always-loaded
+files is a config edit, not a rule edit. See `load-startup-rule-sub-command.md`.
 
 ## Main-agent skill is working well
 

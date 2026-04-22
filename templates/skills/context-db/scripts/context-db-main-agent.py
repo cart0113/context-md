@@ -54,10 +54,10 @@ DEFAULT_CONFIG = {
     # Globs (relative to context-db/) whose content is inlined on session
     # startup via `load-startup-rule`. Use for orienting content the agent
     # needs once per session.
-    "load_on_startup": [],
+    "on_startup": [],
     # Globs inlined on EVERY subcommand invocation (prompt, pre-review,
     # review, update, maintain). Keep BRIEF — real estate is at a premium.
-    "load_always": [],
+    "on_all": [],
     "prompt": {},
     "pre-review": {},
     "review": {
@@ -95,7 +95,7 @@ def load_config(config_path):
         for cmd in COMMANDS:
             if cmd in user:
                 config[cmd].update(user[cmd])
-        for key in ("load_on_startup", "load_always"):
+        for key in ("on_startup", "on_all"):
             if key in user:
                 config[key] = list(user[key])
     return config
@@ -258,19 +258,40 @@ def expand_patterns(patterns, base_dir):
     return files
 
 
+def strip_frontmatter(text):
+    """Strip a leading YAML frontmatter block (delimited by ---) from text.
+
+    If no frontmatter is present or the block is malformed, returns the
+    original text unchanged.
+    """
+    lines = text.splitlines(keepends=True)
+    if not lines or lines[0].rstrip() != "---":
+        return text
+    for i in range(1, len(lines)):
+        if lines[i].rstrip() == "---":
+            return "".join(lines[i + 1:]).lstrip("\n")
+    return text
+
+
 def inline_file(path):
-    """Return a single file's content wrapped with a path header."""
+    """Return a single file's content, with YAML frontmatter stripped.
+
+    No path header, no wrapping — just the readable body. Frontmatter is
+    TOC-routing metadata the agent does not need to see when content is
+    being inlined directly into the prompt.
+    """
     try:
         content = Path(path).read_text()
     except OSError as e:
-        return f"## {path}\n\n(error reading: {e})\n"
-    return f"## {path}\n\n{content.rstrip()}\n"
+        return f"(error reading {path}: {e})\n"
+    return strip_frontmatter(content).rstrip() + "\n"
 
 
 def inline_patterns(patterns, base_dir):
     """Expand patterns and return concatenated inlined content.
 
-    Returns empty string if nothing matches.
+    Files are separated by a blank line. Returns empty string if nothing
+    matches.
     """
     files = expand_patterns(patterns, base_dir)
     if not files:
@@ -337,40 +358,31 @@ def cmd_load_manual(args):
                    context_db_rel=context_db_rel)
 
 
-# ── load_always / load_on_startup emitters ──────────────────────────────────
-# Shared between the load-startup-rule subcommand and the --load-always /
-# --load-startup-rule flags on other subcommands. Output goes straight to
-# stdout as H1-delimited sections.
+# ── on_all / on_startup emitters ────────────────────────────────────────────
+# Shared between the load-startup-rule subcommand and the
+# --load-startup-rule flag on other subcommands. Content is printed raw so
+# the author of the .md file controls their own framing — no preamble, no
+# section header, no path attribution injected by the tool.
 
 
-ALWAYS_PREAMBLE = (
-    "IMPORTANT! Please follow these instructions during any operation:"
-)
-
-
-def emit_load_always(config, context_db_rel):
-    """Print load_always content (brief, fires on every subcommand).
-
-    No-op if load_always is empty or nothing matches.
-    """
-    patterns = config.get("load_always", [])
+def emit_on_all(config, context_db_rel):
+    """Print on_all content raw. No-op if empty or nothing matches."""
+    patterns = config.get("on_all", [])
     if not patterns:
         return
     content = inline_patterns(patterns, context_db_rel)
-    if not content:
-        return
-    print(f"\n# Always-Load\n\n{ALWAYS_PREAMBLE}\n\n{content}")
+    if content:
+        print(f"\n{content}")
 
 
-def emit_load_on_startup(config, context_db_rel):
-    """Print load_on_startup content. No-op if empty or nothing matches."""
-    patterns = config.get("load_on_startup", [])
+def emit_on_startup(config, context_db_rel):
+    """Print on_startup content raw. No-op if empty or nothing matches."""
+    patterns = config.get("on_startup", [])
     if not patterns:
         return
     content = inline_patterns(patterns, context_db_rel)
-    if not content:
-        return
-    print(f"\n# On-Startup\n\n{content}")
+    if content:
+        print(f"\n{content}")
 
 
 def cmd_read(args):
@@ -394,14 +406,13 @@ def cmd_load_startup_rule(args, config):
     toc = find_toc_script()
     context_db_rel = find_context_db()
 
-    emit_load_on_startup(config, context_db_rel)
-    emit_load_always(config, context_db_rel)
-
     print_template("read-mechanics", toc=toc, context_db_rel=context_db_rel)
-    print_template("read-usage", toc=toc, context_db_rel=context_db_rel)
+    print_template("context-usage")
+    emit_on_startup(config, context_db_rel)
+    emit_on_all(config, context_db_rel)
 
 
-def cmd_main_agent(command, prompt, cmd_config, debug=False):
+def cmd_main_agent(command, prompt, cmd_config, config, debug=False):
     """Print tagged prompt sections so the calling agent navigates context-db itself.
 
     This is the "main-agent" mode — no sub-process, the agent uses its own
@@ -425,6 +436,7 @@ def cmd_main_agent(command, prompt, cmd_config, debug=False):
         print_template("persist-to-context-db")
         print_template("update-general",
                         context_db_rel=context_db_rel)
+        emit_on_all(config, context_db_rel)
         if prompt:
             print_section("update-user-instructions", prompt)
         if commit:
@@ -443,11 +455,12 @@ def cmd_main_agent(command, prompt, cmd_config, debug=False):
                     print_template("recent-changes",
                                    recent_changes_block=block)
         print_template(command)
+        emit_on_all(config, context_db_rel)
         if prompt:
             print_section(f"{command}-user-instructions", prompt)
 
 
-def cmd_sub_agent(command, prompt, cmd_config, debug=False):
+def cmd_sub_agent(command, prompt, cmd_config, config, debug=False):
     """Print spawn instructions telling the main agent to invoke the sub-agent.
 
     The main agent will run the printed command via Bash, which spawns an
@@ -457,6 +470,7 @@ def cmd_sub_agent(command, prompt, cmd_config, debug=False):
     sub_agent = find_sub_agent_script()
     model = cmd_config["model"]
     rerun_init = cmd_config.get("rerun-init", False)
+    context_db_rel = find_context_db()
 
     # Build the shell command the main agent will run.
     # For pre-review, the agent fills in the plan; for others, prompt is baked in.
@@ -484,6 +498,7 @@ def cmd_sub_agent(command, prompt, cmd_config, debug=False):
         print(f"model: {model}")
 
     print_template(command, subdir="spawn", run_cmd=run_cmd)
+    emit_on_all(config, context_db_rel)
 
     # For pre-review, print user instructions separately so the agent
     # incorporates them into the plan it sends to the sub-agent
@@ -522,13 +537,13 @@ def cmd_maintain(args, config):
     target_path = args.path if args.path else f"{context_db_rel}/"
 
     if getattr(args, "load_startup_rule", False):
-        emit_load_on_startup(config, context_db_rel)
-    emit_load_always(config, context_db_rel)
+        emit_on_startup(config, context_db_rel)
 
     print_template("write-mechanics", toc=toc, context_db_rel=context_db_rel)
     print_template("write-content-guide")
     print_template("maintain-instructions", toc=toc,
                     context_db_rel=context_db_rel, target_path=target_path)
+    emit_on_all(config, context_db_rel)
 
 
 
@@ -548,7 +563,7 @@ def add_mode_flags(sub):
     sub.add_argument("--config", default=".context-db.json")
     sub.add_argument("--debug", action="store_true")
     sub.add_argument("--load-startup-rule", action="store_true",
-                     help="Also inline load_on_startup content before the "
+                     help="Also inline on_startup content before the "
                           "command output (use for sub-agents that missed "
                           "the session-start load).")
 
@@ -568,13 +583,14 @@ def dispatch_command(args, config):
 
         return
 
-    # Prepend always-load content on every subcommand, and startup content
-    # on demand via --load-startup-rule (useful for sub-agents that missed
-    # the session-start load).
+    # on_startup content optionally goes at the top via --load-startup-rule
+    # (orientation-first for sub-agents that missed the session-start load).
+    # on_all content is emitted inside the handlers, placed right before
+    # the user instructions — recency matters, so last-thing-read is the
+    # always-on rules.
     context_db_rel = find_context_db()
     if getattr(args, "load_startup_rule", False):
-        emit_load_on_startup(config, context_db_rel)
-    emit_load_always(config, context_db_rel)
+        emit_on_startup(config, context_db_rel)
 
     # Build effective config: defaults ← command overrides ← CLI flags
     cmd_config = get_command_config(config, command)
@@ -596,9 +612,9 @@ def dispatch_command(args, config):
     mode = cmd_config["mode"]
 
     if mode == "main-agent":
-        cmd_main_agent(command, prompt, cmd_config, args.debug)
+        cmd_main_agent(command, prompt, cmd_config, config, args.debug)
     elif mode == "sub-agent":
-        cmd_sub_agent(command, prompt, cmd_config, args.debug)
+        cmd_sub_agent(command, prompt, cmd_config, config, args.debug)
     elif mode == "ask":
         cmd_ask_mode(command, prompt, cmd_config, args.debug)
 
@@ -672,7 +688,7 @@ def main():
     # load-startup-rule — session-startup orientation
     lsr = subs.add_parser(
         "load-startup-rule",
-        help="Emit session-startup rule: load_on_startup + load_always + "
+        help="Emit session-startup rule: on_startup + on_all + "
              "read mechanics/usage")
     lsr.add_argument("--config", default=".context-db.json")
 
@@ -681,7 +697,7 @@ def main():
     mt.add_argument("path", nargs="?", default="")
     mt.add_argument("--config", default=".context-db.json")
     mt.add_argument("--load-startup-rule", action="store_true",
-                    help="Also inline load_on_startup content before the "
+                    help="Also inline on_startup content before the "
                          "command output.")
 
     args = parser.parse_args()

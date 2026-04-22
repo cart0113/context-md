@@ -23,5 +23,8 @@
   // maintain always runs in main-agent (writes files)
   "maintain": {
     "mode": "main-agent"
-  }
+  },
+
+  // fires on every subcommand — keep brief, real estate is tight
+  "on_all": ["*-project/ON_ALL.md"]
 }
