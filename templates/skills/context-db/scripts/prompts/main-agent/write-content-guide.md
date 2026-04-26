@@ -24,6 +24,11 @@ Prefer cross-references over duplication — two sources of truth will drift:
   entry self-contained enough to be useful if the link breaks. State the insight
   briefly, link the source, add what the source doesn't say.
 
+Cross-reference paths inside context-db: ALWAYS file-relative (`./foo.md`,
+`../bar/baz.md`). Never absolute, never project-rooted (`context-db/...`).
+File-relative is the only form that survives a folder being symlinked into
+another project. Readers resolve `..`-style paths via the resolver script.
+
 What does NOT belong:
 
 - Code state, step-by-step instructions, anything derivable from project assets

@@ -35,8 +35,11 @@ pitfalls. Add only genuinely non-obvious entries.
 Phase 5 — Documentation drift: Compare context-db against project docs. Where
 they disagree, trust the project assets.
 
-Phase 6 — Cross-references: Fix broken "See also" links. Add new ones only where
-genuinely helpful.
+Phase 6 — Cross-references: All cross-reference paths must be file-relative
+(`./foo.md`, `../bar/baz.md`). Convert any absolute or project-rooted paths
+(`context-db/...`) to file-relative form. Verify `..`-style links resolve
+correctly: `python3 {resolve} <containing-file> <link>`. Fix broken links. Add
+new ones only where genuinely helpful.
 
 Phase 7 — Reindex: Re-read every file, update all description fields to match
 current content. Work bottom-up (deepest folders first). Run TOC on every

@@ -146,6 +146,20 @@ def find_sub_agent_script():
     return rel
 
 
+def find_resolve_script():
+    """Find context-db-resolve-path.py. Returns path relative to cwd."""
+    rel = ".claude/skills/context-db/scripts/context-db-resolve-path.py"
+    if os.path.exists(rel):
+        return rel
+    parent_rel = os.path.join("..", rel)
+    if os.path.exists(parent_rel):
+        return parent_rel
+    candidate = Path(__file__).resolve().parent / "context-db-resolve-path.py"
+    if candidate.exists():
+        return str(candidate)
+    return rel
+
+
 def find_context_db():
     """Find context-db/ relative to cwd."""
     if os.path.isdir("context-db"):
@@ -354,8 +368,9 @@ def print_section(tag, content):
 def cmd_load_manual(args):
     """Load a single instruction template by name."""
     toc = find_toc_script()
+    resolve = find_resolve_script()
     context_db_rel = find_context_db()
-    print_template(args.section, subdir="main-agent", toc=toc,
+    print_template(args.section, subdir="main-agent", toc=toc, resolve=resolve,
                    context_db_rel=context_db_rel)
 
 
@@ -447,9 +462,11 @@ def cmd_load_on_start_context(args, config):
     then the read mechanics the agent needs to navigate context-db.
     """
     toc = find_toc_script()
+    resolve = find_resolve_script()
     context_db_rel = find_context_db()
 
-    print_template("read-mechanics", toc=toc, context_db_rel=context_db_rel)
+    print_template("read-mechanics", toc=toc, resolve=resolve,
+                   context_db_rel=context_db_rel)
     print_template("context-usage")
     emit_on_start(config, context_db_rel)
     emit_on_all(config, context_db_rel)
@@ -462,6 +479,7 @@ def cmd_main_agent(command, prompt, cmd_config, config, debug=False):
     tools (Read, Bash) to browse the TOC and read files.
     """
     toc = find_toc_script()
+    resolve = find_resolve_script()
     context_db_rel = find_context_db()
 
     if debug:
@@ -472,7 +490,7 @@ def cmd_main_agent(command, prompt, cmd_config, config, debug=False):
     if command == "update":
         commit = cmd_config.get("commit", False)
         if commit:
-            print_template("read-mechanics", toc=toc,
+            print_template("read-mechanics", toc=toc, resolve=resolve,
                             context_db_rel=context_db_rel)
         print_template("write-mechanics", toc=toc,
                         context_db_rel=context_db_rel)
@@ -493,7 +511,8 @@ def cmd_main_agent(command, prompt, cmd_config, config, debug=False):
             print_template("update-push")
     else:
         # Read commands: prompt, pre-review, review
-        print_template("read-mechanics", toc=toc, context_db_rel=context_db_rel)
+        print_template("read-mechanics", toc=toc, resolve=resolve,
+                       context_db_rel=context_db_rel)
         if command == "prompt":
             print_template("context-usage")
             use_git_diff = cmd_config.get("use-git-diff")
@@ -589,6 +608,7 @@ def cmd_read_all(args):
 def cmd_maintain(args, config):
     """Print instructions for the maintain workflow (audit + fix context-db)."""
     toc = find_toc_script()
+    resolve = find_resolve_script()
     context_db_rel = find_context_db()
     target_path = args.path if args.path else f"{context_db_rel}/"
 
@@ -597,7 +617,7 @@ def cmd_maintain(args, config):
 
     print_template("write-mechanics", toc=toc, context_db_rel=context_db_rel)
     print_template("write-content-guide")
-    print_template("maintain-instructions", toc=toc,
+    print_template("maintain-instructions", toc=toc, resolve=resolve,
                     context_db_rel=context_db_rel, target_path=target_path)
     emit_always_read_notice(config, context_db_rel)
     emit_on_all(config, context_db_rel)
