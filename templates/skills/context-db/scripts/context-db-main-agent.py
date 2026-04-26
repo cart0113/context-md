@@ -43,6 +43,8 @@ MANUAL_SECTIONS = [
     ("review",               "Review changes against conventions"),
     ("update-general",       "File learnings into context-db"),
     ("update-commit",        "How to write commit messages"),
+    ("no-auto-update",       "Do not auto-update context-db without explicit user instruction"),
+    ("no-auto-read",         "Do not auto-read context-db without explicit user instruction"),
 ]
 
 DEFAULT_CONFIG = {
@@ -479,6 +481,10 @@ def cmd_main_agent(command, prompt, cmd_config, config, debug=False):
                         context_db_rel=context_db_rel)
         emit_always_read_notice(config, context_db_rel)
         emit_on_all(config, context_db_rel)
+        if cmd_config.get("no-auto-update"):
+            print_template("no-auto-update")
+        if cmd_config.get("no-auto-read"):
+            print_template("no-auto-read")
         if prompt:
             print_section("update-user-instructions", prompt)
         if commit:
@@ -498,6 +504,10 @@ def cmd_main_agent(command, prompt, cmd_config, config, debug=False):
                                    recent_changes_block=block)
         print_template(command)
         emit_on_all(config, context_db_rel)
+        if cmd_config.get("no-auto-update"):
+            print_template("no-auto-update")
+        if cmd_config.get("no-auto-read"):
+            print_template("no-auto-read")
         if prompt:
             print_section(f"{command}-user-instructions", prompt)
 
@@ -541,6 +551,10 @@ def cmd_sub_agent(command, prompt, cmd_config, config, debug=False):
 
     print_template(command, subdir="spawn", run_cmd=run_cmd)
     emit_on_all(config, context_db_rel)
+    if cmd_config.get("no-auto-update"):
+        print_template("no-auto-update")
+    if cmd_config.get("no-auto-read"):
+        print_template("no-auto-read")
 
     # For pre-review, print user instructions separately so the agent
     # incorporates them into the plan it sends to the sub-agent
@@ -587,6 +601,11 @@ def cmd_maintain(args, config):
                     context_db_rel=context_db_rel, target_path=target_path)
     emit_always_read_notice(config, context_db_rel)
     emit_on_all(config, context_db_rel)
+    cmd_config = get_command_config(config, "maintain")
+    if cmd_config.get("no-auto-update"):
+        print_template("no-auto-update")
+    if cmd_config.get("no-auto-read"):
+        print_template("no-auto-read")
 
 
 

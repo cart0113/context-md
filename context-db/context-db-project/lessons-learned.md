@@ -136,3 +136,16 @@ better for cheap models than generalized "find any global folder" mechanisms.
 Without scope filtering, the subagent returns information about context-db
 itself when asked about a project that uses context-db. Constrain to information
 found in the knowledge base, not about the knowledge base system.
+
+## On-demand posture: per-command flags + manual entries
+
+`ON_START.md` is the right place for project orientation, but prose guidance
+fades over a session. For users who want context-db fully reactive (the agent
+neither reads nor writes unless explicitly invoked), surface that as per-command
+config flags `no-auto-read` / `no-auto-update` in `.context-db.json` — they emit
+a tagged reminder at the end of every command's output, so recency keeps the
+rule fresh. The matching manual entries (`load-manual no-auto-read` /
+`no-auto-update`) let the user load the same rule mid-session for ad-hoc
+enforcement. Default both to `false` so existing projects are unaffected; the
+startup rule (`templates/rules/context-db.md`) carries the no-auto-update text
+directly for users who want it project-wide without per-command config.

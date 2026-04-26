@@ -63,3 +63,11 @@ in the project's `ON_START.md`, not in separate rules. See
 The unified `/context-db` skill with sub-commands (`prompt`, `pre-review`,
 `review`, `update`, `maintain`) is stable. Python TOC script passes 72/72 tests.
 Template-based prompt composition is clean. No known issues.
+
+## On-demand toggles added (2026-04-26)
+
+`no-auto-update` and `no-auto-read` manual entries plus matching per-command
+config flags in `.context-db.json` (default `false`). Lets users opt into a
+fully-reactive posture where the agent only touches context-db when explicitly
+invoked. The startup rule (`templates/rules/context-db.md`) carries the
+no-auto-update guidance directly. See lessons-learned for rationale.
