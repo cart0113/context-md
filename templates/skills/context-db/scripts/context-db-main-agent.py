@@ -167,6 +167,24 @@ def find_context_db():
     return "."
 
 
+def find_project_folders(context_db_rel):
+    """Return sorted names of top-level `*-project/` folders inside context-db/.
+
+    Convention: a single `context-db/<name>-project/` folder holds knowledge
+    specific to this repo. Other top-level folders are external — global
+    standards, shared conventions, or folders symlinked in from other repos.
+    Returns folder names only (no path), e.g. `["context-db-project"]`.
+    Returns `[]` if context-db is missing or no project folder exists.
+    """
+    if context_db_rel == "." or not os.path.isdir(context_db_rel):
+        return []
+    base = Path(context_db_rel)
+    return sorted(
+        p.name for p in base.glob("*-project")
+        if p.is_dir()
+    )
+
+
 # ── Git diff collection ─────────────────────────────────────────────────────
 # Used by --use-git-diff on the prompt command to show which context-db files
 # were touched recently (likely relevant to where a prior session left off).
@@ -401,6 +419,37 @@ def emit_on_start(config, context_db_rel):
         print(f"\n{content}")
 
 
+def emit_project_folder_reinforcement(context_db_rel):
+    """For write commands, name the project folder so the agent writes there
+    (not into parallel folders, which are external/shared). No-op if no
+    `*-project/` folder is detected.
+    """
+    folders = find_project_folders(context_db_rel)
+    if not folders:
+        return
+    if len(folders) == 1:
+        body = (
+            f"This repo's project folder is `{context_db_rel}/{folders[0]}/`. "
+            f"That is where knowledge specific to this project lives. Other "
+            f"top-level folders under `{context_db_rel}/` are external — "
+            f"global standards, shared conventions, or folders symlinked in "
+            f"from other repos.\n\n"
+            f"When writing or maintaining context-db, default to writing "
+            f"inside the project folder. Only edit a parallel folder when "
+            f"the content is genuinely not project-specific."
+        )
+    else:
+        items = "\n".join(f"- `{context_db_rel}/{f}/`" for f in folders)
+        body = (
+            f"Multiple `*-project/` folders exist at the top level of "
+            f"`{context_db_rel}/`:\n\n{items}\n\n"
+            f"Convention is one project folder per repo. Mention this to the "
+            f"user — they may want to consolidate. In the meantime, write to "
+            f"whichever is the active project folder for the current task."
+        )
+    print_section("project-folder", body)
+
+
 def emit_always_read_notice(config, context_db_rel):
     """For write commands (update, maintain), warn the agent which files
     are inlined every time so it applies strong judgement before writing
@@ -494,6 +543,7 @@ def cmd_main_agent(command, prompt, cmd_config, config, debug=False):
                             context_db_rel=context_db_rel)
         print_template("write-mechanics", toc=toc,
                         context_db_rel=context_db_rel)
+        emit_project_folder_reinforcement(context_db_rel)
         print_template("persist-to-context-db")
         print_template("update-general",
                         context_db_rel=context_db_rel)
@@ -616,6 +666,7 @@ def cmd_maintain(args, config):
         emit_on_start(config, context_db_rel)
 
     print_template("write-mechanics", toc=toc, context_db_rel=context_db_rel)
+    emit_project_folder_reinforcement(context_db_rel)
     print_template("write-content-guide")
     print_template("maintain-instructions", toc=toc, resolve=resolve,
                     context_db_rel=context_db_rel, target_path=target_path)

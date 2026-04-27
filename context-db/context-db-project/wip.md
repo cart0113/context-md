@@ -64,6 +64,15 @@ The unified `/context-db` skill with sub-commands (`prompt`, `pre-review`,
 `review`, `update`, `maintain`) is stable. Python TOC script passes 72/72 tests.
 Template-based prompt composition is clean. No known issues.
 
+## Project-folder convention enforced (2026-04-26)
+
+Dispatcher detects `context-db/*-project/` and emits a `# Project Folder`
+section in update + maintain output naming the folder. Maintain Phase 0 now
+ensures the project folder descriptor frontmatter opens with "Main project
+folder for this repo." Read-side agents pick up the priority signal via TOC
+navigation rather than prompt-level reinforcement. See lessons-learned for the
+read/write asymmetry rationale.
+
 ## On-demand toggles added (2026-04-26)
 
 `no-auto-update` and `no-auto-read` manual entries plus matching per-command

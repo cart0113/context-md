@@ -137,6 +137,25 @@ Without scope filtering, the subagent returns information about context-db
 itself when asked about a project that uses context-db. Constrain to information
 found in the knowledge base, not about the knowledge base system.
 
+## Project-folder convention: marker in frontmatter, not in read prompts
+
+context-db follows a one-`<name>-project/`-per-repo convention. Other top-level
+folders are external (global standards, symlinked shared content). The
+dispatcher detects this via `find_project_folders()` and emits a
+`# Project Folder` section on WRITE commands (update, maintain) naming the
+folder so the agent defaults to writing there. READ commands (prompt,
+pre-review, review) get no prompt-level reinforcement — instead, the maintain
+workflow ensures the project folder's descriptor frontmatter opens with "Main
+project folder for this repo." Read-side agents pick up the role distinction via
+TOC navigation (frontmatter is re-read every nav, no late-session decay).
+
+Why not reinforce on reads too: writes have direction (focus is helpful); reads
+want recall (focus actively hurts — would risk regressing the hard-won
+general-standards reading behavior, which fights the opposite problem of agents
+_under_-reading globals). The asymmetry is intentional. Maintain's frontmatter
+enforcement is the load-bearing piece that makes "let frontmatter do the
+talking" actually work for reads.
+
 ## On-demand posture: per-command flags + manual entries
 
 `ON_START.md` is the right place for project orientation, but prose guidance
