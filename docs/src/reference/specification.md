@@ -93,7 +93,6 @@ your-project/
     │   └── data-model/
     │       ├── data-model.md
     │       └── entities.md
-    ├── general-standards/                 ← always-read (like CLAUDE.md)
     └── coding-standards/                  ← project-agnostic, often symlinked
 ```
 

@@ -44,7 +44,6 @@ your-project/
     │   ├── ON_START.md                    ← orientation, inlined once per session
     │   ├── ON_ALL.md                      ← brief rules, inlined every command
     │   └── architecture.md                ← topic file (frontmatter + body)
-    ├── general-standards/                 ← always loaded (like a CLAUDE.md)
     ├── coding-standards/                  ← project-agnostic (often symlinked)
     └── writing-standards/                 ← project-agnostic (often symlinked)
 ```
@@ -56,9 +55,6 @@ standards repo so multiple projects pull from the same source.
 `ON_START.md` is inlined once per session at the top of the on-start payload;
 `ON_ALL.md` is inlined right before the user's instructions on every command.
 Both are optional.
-
-`general-standards/` is special-cased: the agent reads every file in it before
-any task, the way it would read a `CLAUDE.md`.
 
 The install path shown above (`.claude/skills/context-db/`) is what Claude Code
 expects. The scripts themselves are pure Python and run in any terminal —

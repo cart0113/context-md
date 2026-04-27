@@ -4,15 +4,25 @@ description: Active work items. Update as items are completed or added.
 
 # Work in Progress
 
-## Docs site overview is outdated
+## `general-standards/` special-case — docs/code disagree (2026-04-27)
 
-`docs/src/overview/overview.md` still references bash scripts, old skill names
-(`context-db-manual`, `context-db-reindex`, `context-db-maintain`), and the old
-multi-skill folder structure. Needs syncing with the updated
-`context-db/context-db-project/overview.md` per the convention in
-`writing-docs/sync-overview-readme.md`. The overview symlink was broken during
-the 2026-04-14 maintain pass — the context-db version is now a standalone file
-with frontmatter as it should have been.
+User flagged: with `on_start`/`on_all` globs in place, the special-cased
+always-read `general-standards/` folder may be redundant. Docs were updated to
+drop it from folder-structure trees and remove the "always-loaded" prose
+(`README.md`, `docs/src/overview/overview.md`,
+`docs/src/reference/specification.md`). But the prompt templates still hard-code
+it as MUST-read in five files:
+
+- `templates/skills/context-db/scripts/prompts/main-agent/read-mechanics.md`
+- `templates/skills/context-db/scripts/prompts/main-agent/read-all.md`
+- `templates/skills/context-db/scripts/prompts/sub-agent/output-format.md`
+- `templates/skills/context-db/scripts/prompts/sub-agent/prompt-sub-agent-role.md`
+
+The folder still exists on disk at `context-db/general-standards/`. Decision
+pending: either (a) fully retire the special case — strip it from prompt
+templates and migrate the folder's contents to `on_start` globs, or (b)
+re-document it as a still-supported special case. Do NOT silently "fix" one side
+to match the other without checking with the user.
 
 ## Sub-agent system overhaul — in progress
 
