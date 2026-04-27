@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test suite for context-db-generate-toc.sh
+Test suite for context-db-generate-toc.py
 
 Creates temp directories with various frontmatter styles, runs the TOC
 script, and asserts expected output. Covers YAML scalar styles an LLM
@@ -18,9 +18,9 @@ SCRIPT = os.path.join(
     "..",
     ".claude",
     "skills",
-    "context-db-manual",
+    "context-db",
     "scripts",
-    "context-db-generate-toc.sh",
+    "context-db-generate-toc.py",
 )
 SCRIPT = os.path.abspath(SCRIPT)
 
@@ -28,7 +28,7 @@ SCRIPT = os.path.abspath(SCRIPT)
 def run_toc(path):
     """Run the TOC script on a directory, return (stdout, stderr, returncode)."""
     r = subprocess.run(
-        ["bash", SCRIPT, path],
+        ["python3", SCRIPT, path],
         capture_output=True,
         text=True,
     )
@@ -45,7 +45,13 @@ def write_file(directory, name, content):
 
 
 class TestReadDescription(unittest.TestCase):
-    """Test that read_desc parses various YAML frontmatter styles correctly."""
+    """Test that read_desc parses various YAML frontmatter styles correctly.
+
+    Coverage: single-line (plain, quoted), multi-line continuation, every
+    YAML block scalar indicator (>, >-, |, |-, >+, |+), and edge cases
+    (no frontmatter, empty desc, colons, unicode). These represent every
+    style an LLM is likely to produce when writing frontmatter.
+    """
 
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
@@ -293,7 +299,12 @@ class TestReadDescription(unittest.TestCase):
 
 
 class TestTOCStructure(unittest.TestCase):
-    """Test TOC output structure — subfolders, files, skipping, status."""
+    """Test TOC output structure — subfolders, files, skipping, status.
+
+    Verifies the generate_toc() logic: subfolder detection (needs <name>.md
+    descriptor), hidden/underscore skipping, folder descriptor exclusion from
+    ## Files, status badge appending, empty/nonexistent dir handling.
+    """
 
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp()
@@ -489,12 +500,11 @@ class TestTOCStructure(unittest.TestCase):
 
 
 class TestBlockScalarRegression(unittest.TestCase):
-    """
-    Regression tests for the >- fix.
+    """Regression tests for the >- fix.
 
-    These mirror real-world frontmatter an LLM might generate. Each test
-    verifies the description is extracted correctly, not returned as the
-    literal indicator string.
+    Bug: the original bash parser returned the literal ">-" as the description
+    instead of parsing the indented content below. These tests use real-world
+    frontmatter patterns and verify the indicator is never in the output.
     """
 
     def setUp(self):
