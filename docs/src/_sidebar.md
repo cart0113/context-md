@@ -2,6 +2,11 @@
   - [context-db](overview/overview.md)
 - **Guide**
   - [Getting Started](guide/getting-started.md)
+  - [Commands](guide/commands.md)
+  - [Rules](guide/rules.md)
+  - [Configuring Posture](guide/configuring-posture.md)
   - [Cross-Project Sharing](guide/cross-project-sharing.md)
+  - [Sub-Agents](guide/sub-agents.md)
+  - [Efficacy](guide/efficacy.md)
 - **Reference**
   - [Reference](reference/specification.md)

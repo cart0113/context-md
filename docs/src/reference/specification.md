@@ -2,13 +2,13 @@
 
 ## Description files
 
-A folder is a **context node** if it contains any of these files:
+A folder is a **context node** if it contains a descriptor file:
 
 - `<folder_name>.md`
 - `<folder_name>-instructions.md`
 - `CONTEXT.md`, `SKILL.md`, `AGENT.md`, or `AGENTS.md`
 
-The file has YAML frontmatter with a `description` key. No body content.
+The descriptor has YAML frontmatter with a `description` key and an empty body.
 
 ```yaml
 ---
@@ -25,10 +25,22 @@ description:
 ---
 ```
 
+The descriptor for the **project folder** should open with the marker
+`Main project folder for this repo.` — the dispatcher and `maintain` command
+rely on it to distinguish the project folder from parallel external folders.
+
+```yaml
+---
+description:
+  Main project folder for this repo. Acme Payments — architecture, APIs, data
+  model.
+---
+```
+
 ## Context documents
 
-Individual `.md` files with YAML frontmatter and content. The `description`
-appears in the parent's TOC when `context-db-generate-toc.sh` is run.
+Individual `.md` files with YAML frontmatter and body. The `description` appears
+in the parent's TOC when the TOC script is run.
 
 ```yaml
 ---
@@ -41,9 +53,9 @@ description: System components, data flow, and service boundaries
 
 ## Optional fields
 
-The only required field is `description`.
+The only required frontmatter field is `description`.
 
-### status
+### `status`
 
 Lifecycle stage of the document: `draft`, `stable`, or `deprecated`. Default
 (when omitted): `stable`.
@@ -55,54 +67,107 @@ status: deprecated
 ---
 ```
 
-When `status` is not `stable`, `context-db-generate-toc.sh` appends it to the
-TOC entry so agents see it without opening the file.
+When `status` is not `stable`, the TOC script appends it to the entry so agents
+see the lifecycle without opening the file.
 
-## Directory structure
+## Directory layout
 
 ```
 your-project/
 ├── .claude/
-│   ├── hooks/
-│   │   └── session-start-context-db.sh            ← hook: ensures skill loads every session
-│   ├── rules/context-db.md                        ← rule: load the skill
-│   ├── settings.local.json                        ← wires up the SessionStart hook
-│   └── skills/
-│       ├── context-db-manual/                     ← skill: instructions + script
-│       │   ├── SKILL.md
-│       │   └── scripts/context-db-generate-toc.sh
-│       ├── context-db-reindex/                    ← skill: reindex descriptions
-│       │   └── SKILL.md
-│       └── context-db-maintain/                      ← skill: maintain (cut, fix, reindex)
-│           └── SKILL.md
+│   ├── rules/context-db.md                ← standing rule loaded every session
+│   └── skills/context-db/                 ← unified skill: dispatcher + scripts
+│       ├── SKILL.md
+│       └── scripts/
+│           ├── context-db-generate-toc.py
+│           ├── context-db-main-agent.py
+│           ├── context-db-resolve-path.py
+│           └── context-db-sub-agent.py
+├── .context-db.json                       ← per-command mode/model/posture
 └── context-db/
-    ├── project-name-project/                      ← main project context
-    │   ├── project-name-project.md                ← folder description
-    │   ├── project-coding-standards.md             ← project-specific conventions
-    │   ├── architecture.md                        ← context document
-    │   └── data-model/                            ← nested subfolder
+    ├── <project-name>-project/            ← knowledge specific to this repo
+    │   ├── <project-name>-project.md      ← folder descriptor
+    │   ├── ON_START.md                    ← inlined once per session
+    │   ├── ON_ALL.md                      ← inlined every command
+    │   ├── architecture.md                ← context document
+    │   └── data-model/
     │       ├── data-model.md
     │       └── entities.md
-    └── coding-standards/                          ← ancillary (symlinked)
-        └── coding-standards.md
+    ├── general-standards/                 ← always-read (like CLAUDE.md)
+    └── coding-standards/                  ← project-agnostic, often symlinked
 ```
+
+## `.context-db.json` schema
+
+JSON with `// line comments` permitted. All keys optional except `defaults`.
+
+```jsonc
+{
+  // Fallback for any per-command key not set below.
+  "defaults": {
+    "mode": "main-agent", // main-agent | sub-agent
+    "model": "haiku", // haiku | sonnet | opus
+  },
+
+  // Per-command overrides. Any subset of keys.
+  "prompt": { "no-auto-update": false },
+  "pre-review": { "no-auto-update": false },
+  "review": { "model": "sonnet", "no-auto-update": false },
+  "update": { "mode": "main-agent", "model": "sonnet" },
+  "maintain": { "mode": "main-agent" },
+
+  // Glob patterns relative to context-db/.
+  "on_start": ["*-project/ON_START.md"],
+  "on_all": ["*-project/ON_ALL.md"],
+}
+```
+
+### Per-command keys
+
+| Key              | Type | Default      | Effect                                                                               |
+| ---------------- | ---- | ------------ | ------------------------------------------------------------------------------------ |
+| `mode`           | enum | `main-agent` | `main-agent` runs in the active conversation. `sub-agent` spawns a separate process. |
+| `model`          | enum | `haiku`      | Model used for sub-agent dispatch and recommended for main-agent execution.          |
+| `no-auto-read`   | bool | `false`      | Appends a reminder telling the agent not to browse context-db on its own.            |
+| `no-auto-update` | bool | `false`      | Appends a reminder telling the agent not to write to context-db on its own.          |
+
+`update` and `maintain` are pinned to `main-agent` regardless of `mode` because
+they edit the working tree.
+
+### Always-loaded content
+
+| Key        | Type           | Effect                                                                             |
+| ---------- | -------------- | ---------------------------------------------------------------------------------- |
+| `on_start` | array of globs | Files inlined raw at the top of `load-on-start-context` (once per session).        |
+| `on_all`   | array of globs | Files inlined raw at the end of every sub-command, right before user instructions. |
+
+Globs are relative to `context-db/`. Folders expand recursively. Frontmatter is
+stripped from inlined content; body is emitted as-is.
 
 ## Symlinks
 
-Symlinked folders appear in the TOC when `context-db-generate-toc.sh` is run on
-the parent. The script resolves symlinks to find the real folder name for
-description file lookup, so symlinks can be named freely.
+Symlinked folders appear in the TOC when the script runs on the parent. The
+script resolves symlinks to find the real folder name for descriptor lookup, so
+symlinks can be named freely. Cross-references that traverse symlinked subtrees
+should use the path-resolver script:
 
-To keep a symlink private (visible only to you), add it to `.gitignore`:
+```bash
+python3 .claude/skills/context-db/scripts/context-db-resolve-path.py \
+  <containing-file> <link>
+```
+
+It prints an absolute path that resolves correctly through the symlink. Direct
+`..` traversal is unreliable inside a symlinked tree.
+
+To keep a symlink private, add it to `.gitignore`:
 
 ```gitignore
 context-db/my-private-link
 ```
 
-Because `context-db-generate-toc.sh` generates the TOC on the fly, private
-symlinks appear in your TOC automatically without affecting anyone else's
-working tree. See the [Cross-Project Sharing](../guide/cross-project-sharing.md)
-guide for patterns.
+The TOC is generated on the fly, so private symlinks appear in your TOC without
+affecting anyone else's working tree. See
+[Cross-Project Sharing](../guide/cross-project-sharing.md).
 
 ## Skipping
 
@@ -111,7 +176,7 @@ skipped.
 
 ## TOC format
 
-`context-db-generate-toc.sh` prints the TOC to stdout in this format:
+`context-db-generate-toc.py` prints to stdout in this format:
 
 <!-- prettier-ignore -->
 ```markdown
@@ -131,24 +196,52 @@ skipped.
 Each entry has `description:` on the first line and `path:` on the second.
 Sections only appear when there are entries. An empty folder produces no output.
 
-## context-db-generate-toc.sh
+## Scripts
+
+### `context-db-generate-toc.py`
 
 Generates a TOC for a context-db folder and prints it to stdout.
 
 ```bash
-.claude/skills/context-db-manual/scripts/context-db-generate-toc.sh context-db/
-.claude/skills/context-db-manual/scripts/context-db-generate-toc.sh context-db/my-project/
-.claude/skills/context-db-manual/scripts/context-db-generate-toc.sh context-db/my-project/data-model/
+python3 .claude/skills/context-db/scripts/context-db-generate-toc.py context-db/
+python3 .claude/skills/context-db/scripts/context-db-generate-toc.py context-db/my-project/
 ```
 
-- Takes a single directory argument.
-- Finds the description file for that directory.
-- Lists subfolders (that are context nodes) and files with their descriptions.
-- Resolves symlinks for description file lookup but follows them for reading.
+- Single directory argument.
+- Finds the descriptor file for that directory.
+- Lists subfolders (that are context nodes) and files with descriptions.
+- Resolves symlinks for descriptor lookup but follows them for reading.
 - Skips underscore-prefixed and dot-prefixed names.
-- Requires bash 3.2+, awk (standard on macOS and Linux).
+- Pure Python 3 — no third-party dependencies.
 
-## build_site.sh
+### `context-db-main-agent.py`
+
+The sub-command dispatcher. See [Commands](../guide/commands.md) for the
+sub-command catalog.
+
+```bash
+python3 .claude/skills/context-db/scripts/context-db-main-agent.py <command> [args]
+```
+
+Each sub-command takes one positional `instruction` argument where one applies.
+Multi-word instructions must be quoted as a single shell argument.
+
+### `context-db-sub-agent.py`
+
+Internal — invoked by the dispatcher when a sub-command's `mode` is `sub-agent`.
+Not run directly. See [Sub-Agents](../guide/sub-agents.md).
+
+### `context-db-resolve-path.py`
+
+Resolves cross-reference paths inside symlinked subtrees. Prints an absolute
+path to stdout.
+
+```bash
+python3 .claude/skills/context-db/scripts/context-db-resolve-path.py \
+  <containing-file> <link>
+```
+
+## `build_site.sh`
 
 Generates a browsable Docsify site from a context-db directory.
 
@@ -158,10 +251,10 @@ bin/build_site.sh --embed <source_dir> <output_dir>
 bin/build_site.sh --template file.html <source_dir> <output_dir>
 ```
 
-| Flag         | Effect                                                           |
-| ------------ | ---------------------------------------------------------------- |
-| `--embed`    | Skip index.html / .nojekyll (for nesting under existing Docsify) |
-| `--template` | Use a custom index.html instead of the default                   |
+| Flag         | Effect                                                                |
+| ------------ | --------------------------------------------------------------------- |
+| `--embed`    | Skip `index.html` / `.nojekyll` (for nesting under existing Docsify). |
+| `--template` | Use a custom `index.html` instead of the default.                     |
 
 ## pre-commit hook
 
