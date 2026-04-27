@@ -105,20 +105,18 @@ JSONC (JSON with `// line comments` and trailing commas). All keys optional.
   // Fallback for any per-command key not set below.
   "defaults": {
     "mode": "main-agent", // main-agent | sub-agent
-    "model": "haiku", // haiku | sonnet | opus
     "remind-on-demand-read": false,
     "remind-on-demand-update": false,
   },
-
-  // Per-command overrides. Only set keys that should differ from defaults.
-  "review": { "model": "sonnet" },
-  "update": { "model": "sonnet" },
 
   // Glob patterns relative to context-db/.
   "on_start": ["*-project/ON_START.md"],
   "on_all": ["*-project/ON_ALL.md"],
 }
 ```
+
+The dispatcher carries sensible model defaults internally (`haiku` for read
+commands, `sonnet` for `review` and `update`); set `model` only to override.
 
 ### Per-command keys
 
