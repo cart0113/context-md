@@ -310,9 +310,11 @@ def main():
                         help="Review only flags convention issues from context-db")
     parser.add_argument("--use-git-diff", nargs="?", const=3, default=None,
                         type=int, metavar="N",
-                        help="Prepend recent context-db git changes "
+                        help=("Use git diff to examine context-db changes to focus on "
+                              "recently updated context"
                              "(prompt command only). N=commits (default 3, "
                              "0=uncommitted only)")
+    )
     parser.add_argument("--rerun-init", action="store_true",
                         help="Reload init templates after response")
     parser.add_argument("--debug", action="store_true")

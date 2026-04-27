@@ -85,7 +85,7 @@ every turn. Hook output lives in conversation and gets compacted away. Startup
 instructions belong in rules, not hooks.
 
 The clean separation: the single rule (`rules/context-db.md`) tells the agent to
-run `/context-db load-on-start-context` on session start. Config
+run `/context-db load-start-context` on session start. Config
 (`.context-db.json`) controls HOW commands execute (sub-agent vs main-agent,
 which model) and WHICH project files are always-loaded (`on_start`, `on_all`).
 Workflow choice (reader vs contributor vs autonomous) lives in the project's
@@ -120,17 +120,6 @@ are among the most common structural tokens in training data. H1 headers are
 more human-readable, need no closing tag, and use standard formatting. One H1
 per template file; sub-sections use H2/H3.
 
-## general-standards needs triple-reinforcement for cheap models
-
-A single "always read general-standards/" instruction in read-mechanics gets
-overridden by later selectivity filters ("skip anything not relevant"). Haiku
-browses the folder but skips reading files whose descriptions seem unrelated to
-the task. Fix: reinforce the mandatory-read instruction at three points —
-read-mechanics (read layer), sub-agent role (decision layer), and output format
-(return layer). Each uses MUST/DO NOT language. Canonical folder name
-(`general-standards/`) is hardcoded like CLAUDE.md — concrete targets work
-better for cheap models than generalized "find any global folder" mechanisms.
-
 ## Self-reference guard
 
 Without scope filtering, the subagent returns information about context-db
@@ -150,21 +139,24 @@ project folder for this repo." Read-side agents pick up the role distinction via
 TOC navigation (frontmatter is re-read every nav, no late-session decay).
 
 Why not reinforce on reads too: writes have direction (focus is helpful); reads
-want recall (focus actively hurts — would risk regressing the hard-won
-general-standards reading behavior, which fights the opposite problem of agents
-_under_-reading globals). The asymmetry is intentional. Maintain's frontmatter
-enforcement is the load-bearing piece that makes "let frontmatter do the
-talking" actually work for reads.
+want recall (focus actively hurts — narrowing attention biases the agent away
+from globally-applicable context). The asymmetry is intentional. Maintain's
+frontmatter enforcement is the load-bearing piece that makes "let frontmatter do
+the talking" actually work for reads.
 
-## On-demand posture: per-command flags + manual entries
+## On-demand posture: config flags + manual entries
 
 `ON_START.md` is the right place for project orientation, but prose guidance
 fades over a session. For users who want context-db fully reactive (the agent
-neither reads nor writes unless explicitly invoked), surface that as per-command
-config flags `no-auto-read` / `no-auto-update` in `.context-db.json` — they emit
-a tagged reminder at the end of every command's output, so recency keeps the
-rule fresh. The matching manual entries (`load-manual no-auto-read` /
-`no-auto-update`) let the user load the same rule mid-session for ad-hoc
-enforcement. Default both to `false` so existing projects are unaffected; the
-startup rule (`templates/rules/context-db.md`) carries the no-auto-update text
-directly for users who want it project-wide without per-command config.
+neither reads nor writes unless explicitly invoked), surface that as config
+flags `remind-on-demand-read` / `remind-on-demand-update` in `.context-db.json`
+— they emit a tagged reminder at the end of every command's output, so recency
+keeps the rule fresh. The matching manual entries
+(`load-manual remind-on-demand-read` / `remind-on-demand-update`) let the user
+load the same rule mid-session for ad-hoc enforcement. Default both to `false`
+so the agent's natural initiative isn't suppressed by accident. Set in
+`defaults` to apply across all commands; per-command overrides still work.
+
+The naming is deliberate: the flags don't _enforce_ anything — they append a
+reminder to the prompt. `remind-` is honest about the mechanism; the older
+`no-auto-*` framing implied hard gating that doesn't exist.

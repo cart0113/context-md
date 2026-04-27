@@ -1,13 +1,13 @@
 ---
 description:
-  load-on-start-context subcommand and the on_start / on_all config fields —
+  load-start-context subcommand and the on_start / on_all config fields —
   two-tier always-loaded content, inlined (not referenced) so it lands in
   context reliably.
 ---
 
 ## What it does
 
-`load-on-start-context` emits the on-start context in this order:
+`load-start-context` emits the on-start context in this order:
 
 1. `read-mechanics` — how to navigate `context-db/` via the TOC script
 2. `context-usage` — context-db is a map, not truth; verify against code
@@ -27,7 +27,7 @@ it, so it is not taught here.
 
 ## Usage
 
-    /context-db load-on-start-context
+    /context-db load-start-context
 
 No arguments. Config is read from `.context-db.json`.
 
@@ -36,7 +36,7 @@ No arguments. Config is read from `.context-db.json`.
 Two top-level lists of glob patterns, relative to `context-db/`:
 
 - `on_start` — fires once per session via the on-start context, and on demand
-  via the `--load-on-start-context` flag on other subcommands. Use for orienting
+  via the `--load-start-context` flag on other subcommands. Use for orienting
   content an agent needs to read to work effectively on the project. Heavier
   content is OK here; it loads once.
 - `on_all` — fires automatically at the top of every subcommand invocation
@@ -62,7 +62,7 @@ folder and populate.
 
 ## Flags on other subcommands
 
-`--load-on-start-context` on `prompt`, `pre-review`, `review`, `update`, and
+`--load-start-context` on `prompt`, `pre-review`, `review`, `update`, and
 `maintain` prepends the expanded `on_start` block to that command's output.
 Intended for sub-agent invocations that missed the on-start load. `on_all` fires
 on every subcommand automatically — no flag needed.

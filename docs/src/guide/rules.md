@@ -8,7 +8,7 @@ Different agents call them different things — rules, `AGENTS.md`,
 
 context-db works with any of them. The pattern is universal:
 
-> Tell the agent to run `context-db-main-agent.py load-on-start-context` at the
+> Tell the agent to run `context-db-main-agent.py load-start-context` at the
 > start of every conversation, then follow what it prints.
 
 The script emits the read-mechanics, the context-usage framing, and every file
@@ -17,24 +17,18 @@ matched by `on_start` / `on_all` globs (see
 
 ## The default rule body
 
-Whatever your agent's mechanism is, the body to install is the same:
+Whatever your agent's mechanism is, the body to install is one line:
 
 ```markdown
-On session start, run `context-db-main-agent.py load-on-start-context` and
-follow its output.
-
-Outside of that on-start load, do not browse or read `context-db/` on your own.
-The user invokes context-db commands when they want you to use project
-knowledge.
-
-Do not write to or update context-db on your own. Wait for the user to
-explicitly run an `update` or `maintain` command. If you think something belongs
-in context-db, mention it and let the user decide.
+On session start, run `context-db-main-agent.py load-start-context` and follow
+its output.
 ```
 
-The first paragraph is the load directive. The next two codify a **reactive
-posture** — the agent does nothing with context-db unless explicitly asked. Both
-are optional; remove either to opt back into automatic behavior.
+The script does the rest — read-mechanics, context-usage framing, and every file
+matched by `on_start` / `on_all` globs gets inlined into the agent's context.
+Posture (reactive vs. active) is controlled by the `remind-on-demand-read` /
+`remind-on-demand-update` flags in `.context-db.json`, not the rule. See
+[Configuring Posture](configuring-posture.md).
 
 The exact path to the script depends on where it's installed. The canonical
 install location is `.claude/skills/context-db/scripts/context-db-main-agent.py`
@@ -50,7 +44,7 @@ on every conversation turn and survive context compaction. The shipped template
 is at `templates/rules/context-db.md` — copy or symlink it.
 
 Claude Code also exposes the dispatcher as the `/context-db` skill, so the rule
-can call `/context-db load-on-start-context` instead of the longer script path.
+can call `/context-db load-start-context` instead of the longer script path.
 
 ### Cursor
 
@@ -80,7 +74,7 @@ The script doesn't need an agent — it runs in any terminal:
 
 ```bash
 python3 .claude/skills/context-db/scripts/context-db-main-agent.py \
-  load-on-start-context
+  load-start-context
 ```
 
 Output is the full payload: read-mechanics, context-usage, and every `on_start`
@@ -96,7 +90,7 @@ now sees the exact bytes chosen, with no indirection through the script.
 
 ```bash
 python3 .claude/skills/context-db/scripts/context-db-main-agent.py \
-  load-on-start-context > .claude/rules/context-db.md
+  load-start-context > .claude/rules/context-db.md
 # edit to taste
 ```
 

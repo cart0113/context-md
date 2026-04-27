@@ -125,7 +125,7 @@ requirement is that the agent can run a Python script and read its output.
 
 ```bash
 python3 .claude/skills/context-db/scripts/context-db-generate-toc.py context-db/
-python3 .claude/skills/context-db/scripts/context-db-main-agent.py load-on-start-context
+python3 .claude/skills/context-db/scripts/context-db-main-agent.py load-start-context
 ```
 
 The first prints the TOC. The second prints the on-start payload — the exact

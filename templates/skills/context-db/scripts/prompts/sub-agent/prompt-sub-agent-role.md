@@ -22,8 +22,5 @@ output through other commands. Do NOT construct absolute paths.
 
 ## Rules
 
-- MUST read and return ALL files from `{context_db_rel}/general-standards/`. Do
-  NOT skip them. Do NOT filter them by relevance. They apply to every task.
-- Return general-standards content FIRST, before task-specific content.
-- For everything else, only read files whose TOC description suggests they are
-  directly relevant to the Main Prompt. Skip tangential content.
+- Only read files whose TOC description suggests they are directly relevant to
+  the Main Prompt. Skip tangential content.

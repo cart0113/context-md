@@ -6,11 +6,11 @@ specifications are followed. However `context-db`:
 
 - Organizes md files in a hierarchical b-tree using the file system so context
   can be efficiently loaded based on the task at hand: files and folders employ
-  yaml frontmatter like a `SKILL.md` file and the system uses a script to build
-  table of contents listings of every folder on demand. By convention, md file
-  databases have 5-10 items per folder and ~150 lines of context per file. This
-  way, the amount of context loaded scales with the task, not the total
-  knowledge base.
+  yaml frontmatter like a `SKILL.md` file and the system uses a script to
+  dynamically build table of contents listings of every folder. By convention,
+  md file databases have 5-10 items per folder and ~150 lines of context per
+  file. This way, the amount of context loaded scales with the task, not the
+  total knowledge base.
 
 - Leveraging the on demand table of contents generation and a few conventions,
   `context-db` was designed to symlink into other databases, allowing you to
@@ -99,20 +99,18 @@ extremes:
   initiative.
 
 Both come from the same machinery: a single `.context-db.json` file controls
-per-command mode, model, and the `no-auto-read` / `no-auto-update` toggles that
-switch the posture.
+per-command mode, model, and the `remind-on-demand-read` /
+`remind-on-demand-update` toggles that switch the posture.
 
 ## The context problem
-
-> ["To alcohol! The cause of, and solution to, all of life's problems."](https://www.youtube.com/watch?v=SXyrYMxa-VI)
-> — Homer Simpson
 
 Context files are both the cause of, and solution to, many agent problems. There
 is [increasing discussion](https://arxiv.org/abs/2602.11988) about whether
 `CLAUDE.md`, `AGENTS.md`, and `.cursorrules` actually help performance. Agents
 given context files that describe code state trust those descriptions, read less
 actual code, and perform _worse_ when descriptions drift. Cost goes up, success
-rate goes down.
+rate goes down. See [Efficacy](../guide/efficacy.md) for the experiments and the
+trade-off in detail.
 
 Yet agents left with no guidance default to their training: generic patterns, no
 awareness of project-specific constraints. The result is code that compiles but

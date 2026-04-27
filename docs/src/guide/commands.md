@@ -61,7 +61,7 @@ audit. Interactive by default; can run in `Review` or `Autonomous` mode.
 
 ## Loader commands
 
-### `load-on-start-context`
+### `load-start-context`
 
 Emits the on-start payload: read-mechanics, context-usage framing, and every
 file matched by `on_start` and `on_all` globs from `.context-db.json`, inlined

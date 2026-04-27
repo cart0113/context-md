@@ -98,7 +98,7 @@ your-project/
 
 ## `.context-db.json` schema
 
-JSON with `// line comments` permitted. All keys optional except `defaults`.
+JSONC (JSON with `// line comments` and trailing commas). All keys optional.
 
 ```jsonc
 {
@@ -106,14 +106,13 @@ JSON with `// line comments` permitted. All keys optional except `defaults`.
   "defaults": {
     "mode": "main-agent", // main-agent | sub-agent
     "model": "haiku", // haiku | sonnet | opus
+    "remind-on-demand-read": false,
+    "remind-on-demand-update": false,
   },
 
-  // Per-command overrides. Any subset of keys.
-  "prompt": { "no-auto-update": false },
-  "pre-review": { "no-auto-update": false },
-  "review": { "model": "sonnet", "no-auto-update": false },
-  "update": { "mode": "main-agent", "model": "sonnet" },
-  "maintain": { "mode": "main-agent" },
+  // Per-command overrides. Only set keys that should differ from defaults.
+  "review": { "model": "sonnet" },
+  "update": { "model": "sonnet" },
 
   // Glob patterns relative to context-db/.
   "on_start": ["*-project/ON_START.md"],
@@ -123,21 +122,22 @@ JSON with `// line comments` permitted. All keys optional except `defaults`.
 
 ### Per-command keys
 
-| Key              | Type | Default      | Effect                                                                               |
-| ---------------- | ---- | ------------ | ------------------------------------------------------------------------------------ |
-| `mode`           | enum | `main-agent` | `main-agent` runs in the active conversation. `sub-agent` spawns a separate process. |
-| `model`          | enum | `haiku`      | Model used for sub-agent dispatch and recommended for main-agent execution.          |
-| `no-auto-read`   | bool | `false`      | Appends a reminder telling the agent not to browse context-db on its own.            |
-| `no-auto-update` | bool | `false`      | Appends a reminder telling the agent not to write to context-db on its own.          |
+| Key                       | Type | Default      | Effect                                                                                                                        |
+| ------------------------- | ---- | ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `mode`                    | enum | `main-agent` | `main-agent` runs in the active conversation. `sub-agent` spawns a separate process.                                          |
+| `model`                   | enum | `haiku`      | Model used for sub-agent dispatch and recommended for main-agent execution.                                                   |
+| `remind-on-demand-read`   | bool | `false`      | Appends a reminder telling the agent to read context-db only when the user explicitly invokes a `/context-db` command.        |
+| `remind-on-demand-update` | bool | `false`      | Appends a reminder telling the agent to write to context-db only via explicit `/context-db update` or `/context-db maintain`. |
 
 `update` and `maintain` are pinned to `main-agent` regardless of `mode` because
-they edit the working tree.
+they edit the working tree. Set the `remind-on-demand-*` flags in `defaults` to
+apply them across all commands; per-command overrides are still allowed.
 
 ### Always-loaded content
 
 | Key        | Type           | Effect                                                                             |
 | ---------- | -------------- | ---------------------------------------------------------------------------------- |
-| `on_start` | array of globs | Files inlined raw at the top of `load-on-start-context` (once per session).        |
+| `on_start` | array of globs | Files inlined raw at the top of `load-start-context` (once per session).           |
 | `on_all`   | array of globs | Files inlined raw at the end of every sub-command, right before user instructions. |
 
 Globs are relative to `context-db/`. Folders expand recursively. Frontmatter is

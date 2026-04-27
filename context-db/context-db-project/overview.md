@@ -12,11 +12,11 @@ specifications are followed. However `context-db`:
 
 - Organizes md files in a hierarchical b-tree using the file system so context
   can be efficiently loaded based on the task at hand: files and folders employ
-  yaml frontmatter like a `SKILL.md` file and the system uses a script to build
-  table of contents listings of every folder on demand. By convention, md file
-  databases have 5-10 items per folder and ~150 lines of context per file. This
-  way, the amount of context loaded scales with the task, not the total
-  knowledge base.
+  yaml frontmatter like a `SKILL.md` file and the system uses a script to
+  dynamically build table of contents listings of every folder. By convention,
+  md file databases have 5-10 items per folder and ~150 lines of context per
+  file. This way, the amount of context loaded scales with the task, not the
+  total knowledge base.
 
 - Leveraging the on demand table of contents generation and a few conventions,
   `context-db` was designed to symlink into other databases, allowing you to
@@ -91,15 +91,14 @@ symlinks can point anywhere. See
 
 ## The Context Problem
 
-> ["To alcohol! The cause of, and solution to, all of life's problems."](https://www.youtube.com/watch?v=SXyrYMxa-VI)
-> — Homer Simpson
-
-Context files are both the cause of, and solution to, many agent problems. There
-is [increasing discussion](https://arxiv.org/abs/2602.11988) about whether
-`CLAUDE.md`, `AGENTS.md`, `.cursorrules` actually help. Agents given context
-files that describe code state trust those descriptions, read less actual code,
-and perform _worse_ when descriptions drift. Cost goes up, success rate goes
-down.
+Context files are both the cause of, and solution to, many agent problems.
+There is [increasing discussion](https://arxiv.org/abs/2602.11988) about
+whether `CLAUDE.md`, `AGENTS.md`, `.cursorrules` actually help. Agents given
+context files that describe code state trust those descriptions, read less
+actual code, and perform _worse_ when descriptions drift. Cost goes up,
+success rate goes down. See the
+[Efficacy](https://cart0113.github.io/context-db/#/guide/efficacy) page for
+experiments and trade-off detail.
 
 Yet agents left with no guidance default to their training: generic patterns, no
 awareness of project-specific constraints. The result is code that compiles but

@@ -15,11 +15,6 @@ Use descriptions to judge relevance before reading or drilling in:
 - Skip files and subfolders whose descriptions don't suggest direct relevance.
   Be selective — reading everything wastes time and dilutes useful context.
 
-If `{context_db_rel}/general-standards/` exists, you MUST read every file in it.
-These are global standards that apply to ALL tasks — like a CLAUDE.md. Do NOT
-skip them. Do NOT filter them by relevance. Read them first, before anything
-else.
-
 ### Following cross-references
 
 Cross-reference paths inside context-db files are file-relative (e.g.

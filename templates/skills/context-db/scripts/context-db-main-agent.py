@@ -43,8 +43,8 @@ MANUAL_SECTIONS = [
     ("review",               "Review changes against conventions"),
     ("update-general",       "File learnings into context-db"),
     ("update-commit",        "How to write commit messages"),
-    ("no-auto-update",       "Do not auto-update context-db without explicit user instruction"),
-    ("no-auto-read",         "Do not auto-read context-db without explicit user instruction"),
+    ("remind-on-demand-update",       "Reminder: only update context-db when the user explicitly invokes a command"),
+    ("remind-on-demand-read",         "Reminder: only read context-db when the user explicitly invokes a command"),
 ]
 
 DEFAULT_CONFIG = {
@@ -53,7 +53,7 @@ DEFAULT_CONFIG = {
         "model": "haiku",
     },
     # Globs (relative to context-db/) whose content is inlined on session
-    # start via `load-on-start-context`. Use for orienting content the agent
+    # start via `load-start-context`. Use for orienting content the agent
     # needs once per session.
     "on_start": [],
     # Globs inlined on EVERY subcommand invocation (prompt, pre-review,
@@ -75,9 +75,11 @@ DEFAULT_CONFIG = {
 
 
 def strip_jsonc_comments(text):
-    """Strip // comments from JSONC text. Ignores // inside strings."""
+    """Strip // comments and trailing commas from JSONC text."""
     import re
-    return re.sub(r'(?<!:)//.*', '', text)
+    text = re.sub(r'(?<!:)//.*', '', text)
+    text = re.sub(r',(\s*[}\]])', r'\1', text)
+    return text
 
 
 def load_config(config_path):
@@ -259,7 +261,7 @@ def collect_recent_changes(context_db_rel, n):
 
 
 # ── Pattern expansion and file inlining ─────────────────────────────────────
-# Used by `read`, `load-on-start-context`, and the --load-on-start-context /
+# Used by `read`, `load-start-context`, and the --load-start-context /
 # --load-always flags. Patterns are globs resolved relative to base_dir
 # (context-db/ by default). Folders match expand to every file underneath.
 
@@ -393,8 +395,8 @@ def cmd_load_manual(args):
 
 
 # ── on_all / on_start emitters ────────────────────────────────────────────
-# Shared between the load-on-start-context subcommand and the
-# --load-on-start-context flag on other subcommands. Content is printed raw so
+# Shared between the load-start-context subcommand and the
+# --load-start-context flag on other subcommands. Content is printed raw so
 # the author of the .md file controls their own framing — no preamble, no
 # section header, no path attribution injected by the tool.
 
@@ -506,7 +508,7 @@ def cmd_read(args):
     print("\n".join(inline_file(f) for f in files))
 
 
-def cmd_load_on_start_context(args, config):
+def cmd_load_start_context(args, config):
     """Print the on-start context: read-mechanics + context-usage + inlined on_start and on_all files,
     then the read mechanics the agent needs to navigate context-db.
     """
@@ -549,10 +551,10 @@ def cmd_main_agent(command, prompt, cmd_config, config, debug=False):
                         context_db_rel=context_db_rel)
         emit_always_read_notice(config, context_db_rel)
         emit_on_all(config, context_db_rel)
-        if cmd_config.get("no-auto-update"):
-            print_template("no-auto-update")
-        if cmd_config.get("no-auto-read"):
-            print_template("no-auto-read")
+        if cmd_config.get("remind-on-demand-update"):
+            print_template("remind-on-demand-update")
+        if cmd_config.get("remind-on-demand-read"):
+            print_template("remind-on-demand-read")
         if prompt:
             print_section("update-user-instructions", prompt)
         if commit:
@@ -573,10 +575,10 @@ def cmd_main_agent(command, prompt, cmd_config, config, debug=False):
                                    recent_changes_block=block)
         print_template(command)
         emit_on_all(config, context_db_rel)
-        if cmd_config.get("no-auto-update"):
-            print_template("no-auto-update")
-        if cmd_config.get("no-auto-read"):
-            print_template("no-auto-read")
+        if cmd_config.get("remind-on-demand-update"):
+            print_template("remind-on-demand-update")
+        if cmd_config.get("remind-on-demand-read"):
+            print_template("remind-on-demand-read")
         if prompt:
             print_section(f"{command}-user-instructions", prompt)
 
@@ -620,10 +622,10 @@ def cmd_sub_agent(command, prompt, cmd_config, config, debug=False):
 
     print_template(command, subdir="spawn", run_cmd=run_cmd)
     emit_on_all(config, context_db_rel)
-    if cmd_config.get("no-auto-update"):
-        print_template("no-auto-update")
-    if cmd_config.get("no-auto-read"):
-        print_template("no-auto-read")
+    if cmd_config.get("remind-on-demand-update"):
+        print_template("remind-on-demand-update")
+    if cmd_config.get("remind-on-demand-read"):
+        print_template("remind-on-demand-read")
 
     # For pre-review, print user instructions separately so the agent
     # incorporates them into the plan it sends to the sub-agent
@@ -662,7 +664,7 @@ def cmd_maintain(args, config):
     context_db_rel = find_context_db()
     target_path = args.path if args.path else f"{context_db_rel}/"
 
-    if getattr(args, "load_on_start_context", False):
+    if getattr(args, "load_start_context", False):
         emit_on_start(config, context_db_rel)
 
     print_template("write-mechanics", toc=toc, context_db_rel=context_db_rel)
@@ -673,10 +675,10 @@ def cmd_maintain(args, config):
     emit_always_read_notice(config, context_db_rel)
     emit_on_all(config, context_db_rel)
     cmd_config = get_command_config(config, "maintain")
-    if cmd_config.get("no-auto-update"):
-        print_template("no-auto-update")
-    if cmd_config.get("no-auto-read"):
-        print_template("no-auto-read")
+    if cmd_config.get("remind-on-demand-update"):
+        print_template("remind-on-demand-update")
+    if cmd_config.get("remind-on-demand-read"):
+        print_template("remind-on-demand-read")
 
 
 
@@ -695,7 +697,7 @@ def add_mode_flags(sub):
     sub.add_argument("--model", choices=MODEL_CHOICES)
     sub.add_argument("--config", default=".context-db.json")
     sub.add_argument("--debug", action="store_true")
-    sub.add_argument("--load-on-start-context", action="store_true",
+    sub.add_argument("--load-start-context", action="store_true",
                      help="Also inline on_start content before the "
                           "command output (use for sub-agents that missed "
                           "the session-start load).")
@@ -716,13 +718,13 @@ def dispatch_command(args, config):
 
         return
 
-    # on_start content optionally goes at the top via --load-on-start-context
+    # on_start content optionally goes at the top via --load-start-context
     # (orientation-first for sub-agents that missed the on-start load).
     # on_all content is emitted inside the handlers, placed right before
     # the user instructions — recency matters, so last-thing-read is the
     # always-on rules.
     context_db_rel = find_context_db()
-    if getattr(args, "load_on_start_context", False):
+    if getattr(args, "load_start_context", False):
         emit_on_start(config, context_db_rel)
 
     # Build effective config: defaults ← command overrides ← CLI flags
@@ -779,9 +781,12 @@ def main():
     p = subs.add_parser("prompt", help="Consult knowledge base")
     p.add_argument("instruction", nargs="?", default="")
     p.add_argument("--use-git-diff", nargs="?", const=3, default=None,
-                   type=int, metavar="N",
-                   help="Prepend recent context-db git changes. N=commits "
-                        "to include (default 3, 0=uncommitted only)")
+                        type=int, metavar="N",
+                        help=("Use git diff to examine context-db changes to focus on "
+                              "recently updated context."
+                             " N=commits (default 3, "
+                             "0=uncommitted only)")
+    )
     add_mode_flags(p)
 
     # pre-review
@@ -818,9 +823,9 @@ def main():
     rd.add_argument("paths", nargs="+",
                     help="One or more paths or glob patterns")
 
-    # load-on-start-context — session-start orientation
+    # load-start-context — session-start orientation
     lsr = subs.add_parser(
-        "load-on-start-context",
+        "load-start-context",
         help="Emit on-start context: on_start + on_all + "
              "read mechanics/usage")
     lsr.add_argument("--config", default=".context-db.json")
@@ -829,7 +834,7 @@ def main():
     mt = subs.add_parser("maintain", help="Audit and maintain context-db")
     mt.add_argument("path", nargs="?", default="")
     mt.add_argument("--config", default=".context-db.json")
-    mt.add_argument("--load-on-start-context", action="store_true",
+    mt.add_argument("--load-start-context", action="store_true",
                     help="Also inline on_start content before the "
                          "command output.")
 
@@ -849,8 +854,8 @@ def main():
         cmd_read_all(args)
     elif args.command == "read":
         cmd_read(args)
-    elif args.command == "load-on-start-context":
-        cmd_load_on_start_context(args, config)
+    elif args.command == "load-start-context":
+        cmd_load_start_context(args, config)
     elif args.command == "maintain":
         cmd_maintain(args, config)
     else:

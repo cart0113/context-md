@@ -1,4 +1,4 @@
-# No Auto Read
+# Remind On Demand Read
 
 Do not browse or read `context-db/` on your own. Only consult context-db when
 the user explicitly runs a `/context-db` command (prompt, pre-review, review,

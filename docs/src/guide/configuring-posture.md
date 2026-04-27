@@ -95,35 +95,40 @@ need somewhere between 0 and 10 lines.
 
 ## Reactive toggles
 
-Two flags add a reminder to a sub-command's output instructing the agent **not**
-to touch context-db on its own. They're how a project switches context-db from
-"active participant" to "available on request."
+Two flags append a reminder to a sub-command's output instructing the agent
+**not** to touch context-db on its own. They're how a project switches
+context-db from "active participant" to "available on request."
 
-- `no-auto-read` — agent does not browse or read context-db unless the user
-  explicitly invokes a context-db command.
-- `no-auto-update` — agent does not write to or maintain context-db unless the
-  user explicitly runs `update` or `maintain`.
+- `remind-on-demand-read` — reminds the agent it should only read context-db
+  when the user explicitly invokes a `/context-db` command.
+- `remind-on-demand-update` — reminds the agent it should only write to
+  context-db via explicit `/context-db update` or `/context-db maintain`.
 
 ```jsonc
 {
-  "prompt": { "no-auto-update": true },
-  "pre-review": { "no-auto-update": true },
-  "update": { "no-auto-update": false },
+  "defaults": {
+    "remind-on-demand-read": true,
+    "remind-on-demand-update": true,
+  },
 }
 ```
 
-Both default to `false`. Setting them per-command lets a project be reactive on
-lookups but allow normal write behavior on `update` / `maintain`.
+Both default to `false`. Set them in `defaults` to apply across all commands;
+per-command overrides still work if you want, say, reactive lookups but normal
+write behavior on `update` / `maintain`.
 
-The matching `load-manual no-auto-read` and `load-manual no-auto-update`
-sections let the same reminders be loaded mid-conversation if the agent starts
-drifting.
+The naming is deliberate: these flags don't _enforce_ anything, they append
+prompt reminders. `remind-` is honest about the mechanism.
+
+The matching `load-manual remind-on-demand-read` and
+`load-manual remind-on-demand-update` sections let the same reminders be loaded
+mid-conversation if the agent starts drifting.
 
 ## Project-folder convention
 
 The dispatcher detects `context-db/<name>-project/` folders by glob. Convention
 is one such folder per repo, holding knowledge specific to the project. Other
-top-level folders (e.g. `general-standards/`, `coding-standards/`) are treated
+top-level folders (e.g. `coding-standards/`, `writing-standards/`) are treated
 as external — global standards or content symlinked from another repo.
 
 `update` and `maintain` emit a reminder to the agent naming the detected project

@@ -1,4 +1,4 @@
-# No Auto Update
+# Remind On Demand Update
 
 Do not write to or update context-db files on your own. Even if you encounter
 project knowledge worth persisting — surprising gotchas, new conventions, design

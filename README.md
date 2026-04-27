@@ -6,11 +6,11 @@ specifications are followed. However `context-db`:
 
 - Organizes md files in a hierarchical b-tree using the file system so context
   can be efficiently loaded based on the task at hand: files and folders employ
-  yaml frontmatter like a `SKILL.md` file and the system uses a script to build
-  table of contents listings of every folder on demand. By convention, md file
-  databases have 5-10 items per folder and ~150 lines of context per file. This
-  way, the amount of context loaded scales with the task, not the total
-  knowledge base.
+  yaml frontmatter like a `SKILL.md` file and the system uses a script to
+  dynamically build table of contents listings of every folder. By convention,
+  md file databases have 5-10 items per folder and ~150 lines of context per
+  file. This way, the amount of context loaded scales with the task, not the
+  total knowledge base.
 
 - Leveraging the on demand table of contents generation and a few conventions,
   `context-db` was designed to symlink into other databases, allowing you to
@@ -76,7 +76,7 @@ context-db works with any agent that has a project-level standing instruction
 mechanism — Claude Code rules, Cursor rules, `AGENTS.md`, `.cursorrules`,
 `copilot-instructions.md`. The pattern is universal:
 
-> Tell the agent to run `context-db-main-agent.py load-on-start-context` at the
+> Tell the agent to run `context-db-main-agent.py load-start-context` at the
 > start of every conversation, and follow what it prints.
 
 That single delegation gives the agent the read-mechanics, the context-usage
@@ -115,14 +115,13 @@ Full guide:
 
 ## The context problem
 
-> ["To alcohol! The cause of, and solution to, all of life's problems."](https://www.youtube.com/watch?v=SXyrYMxa-VI)
-> — Homer Simpson
-
 Context files are both the cause of, and solution to, many agent problems.
 Agents given context files that describe code state trust those descriptions,
 read less actual code, and perform _worse_ when descriptions drift. Yet agents
 left with no guidance default to their training and miss every project-specific
-constraint.
+constraint. See
+[Efficacy](https://cart0113.github.io/context-db/#/guide/efficacy) for the
+experiments and the trade-off in detail.
 
 The principle context-db follows: contain the gap between what the code shows
 and what the agent needs to know. Conventions it wouldn't infer. Pitfalls it

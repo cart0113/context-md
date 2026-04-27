@@ -4,26 +4,6 @@ description: Active work items. Update as items are completed or added.
 
 # Work in Progress
 
-## `general-standards/` special-case — docs/code disagree (2026-04-27)
-
-User flagged: with `on_start`/`on_all` globs in place, the special-cased
-always-read `general-standards/` folder may be redundant. Docs were updated to
-drop it from folder-structure trees and remove the "always-loaded" prose
-(`README.md`, `docs/src/overview/overview.md`,
-`docs/src/reference/specification.md`). But the prompt templates still hard-code
-it as MUST-read in five files:
-
-- `templates/skills/context-db/scripts/prompts/main-agent/read-mechanics.md`
-- `templates/skills/context-db/scripts/prompts/main-agent/read-all.md`
-- `templates/skills/context-db/scripts/prompts/sub-agent/output-format.md`
-- `templates/skills/context-db/scripts/prompts/sub-agent/prompt-sub-agent-role.md`
-
-The folder still exists on disk at `context-db/general-standards/`. Decision
-pending: either (a) fully retire the special case — strip it from prompt
-templates and migrate the folder's contents to `on_start` globs, or (b)
-re-document it as a still-supported special case. Do NOT silently "fix" one side
-to match the other without checking with the user.
-
 ## Sub-agent system overhaul — in progress
 
 Sub-agent architecture rebuilt with composable templates. Three template
@@ -60,13 +40,12 @@ Remaining:
 
 Replaced hook-based `load-manual` compositing with a single rule file
 (`templates/rules/context-db.md`) that tells the agent to run
-`/context-db load-on-start-context`. Rules survive compaction, require no
-config. Two-tier always-load config (`on_start` + `on_all`) wires in
-project-specific files that get inlined at session start (`on_start`) or on
-every command (`on_all`). The 4 preset rule files (on-demand, reader,
-contributor, autonomous) were dropped 2026-04-22 — workflow choice now belongs
-in the project's `ON_START.md`, not in separate rules. See
-`load-on-start-context-sub-command.md`.
+`/context-db load-start-context`. Rules survive compaction, require no config.
+Two-tier always-load config (`on_start` + `on_all`) wires in project-specific
+files that get inlined at session start (`on_start`) or on every command
+(`on_all`). The 4 preset rule files (on-demand, reader, contributor, autonomous)
+were dropped 2026-04-22 — workflow choice now belongs in the project's
+`ON_START.md`, not in separate rules. See `load-start-context-sub-command.md`.
 
 ## Main-agent skill is working well
 
@@ -83,10 +62,11 @@ folder for this repo." Read-side agents pick up the priority signal via TOC
 navigation rather than prompt-level reinforcement. See lessons-learned for the
 read/write asymmetry rationale.
 
-## On-demand toggles added (2026-04-26)
+## On-demand toggles added (2026-04-26, renamed 2026-04-27)
 
-`no-auto-update` and `no-auto-read` manual entries plus matching per-command
-config flags in `.context-db.json` (default `false`). Lets users opt into a
-fully-reactive posture where the agent only touches context-db when explicitly
-invoked. The startup rule (`templates/rules/context-db.md`) carries the
-no-auto-update guidance directly. See lessons-learned for rationale.
+`remind-on-demand-update` and `remind-on-demand-read` manual entries plus
+matching config flags in `.context-db.json` (default `false`, settable in
+`defaults` to apply across all commands). Lets users opt into a fully-reactive
+posture where the agent only touches context-db when explicitly invoked. Renamed
+from `no-auto-*` 2026-04-27 — the new prefix is honest about the mechanism
+(appends a prompt reminder, not enforcement). See lessons-learned for rationale.
