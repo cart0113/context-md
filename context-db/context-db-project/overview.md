@@ -1,42 +1,50 @@
 ---
 description:
-  What context-db is, why it exists, folder structure, how agents use it,
-  the context problem (why less is more), and maintenance
+  What context-db is, why it exists, folder structure, how agents use it, the
+  context problem (why less is more), and maintenance
 ---
 
 # context-db
 
-A minimal standard for organizing project knowledge as hierarchical Markdown so
-LLM agents can discover and fetch only what they need.
+At its core, `context-db` works like an extended `AGENTS.md` or commonly used
+startup rules to load context into an agent session so your instructions and
+specifications are followed. However `context-db`:
 
-Large `CLAUDE.md` and `AGENTS.md` files loaded every session hurt agent
-performance — but agents still need project-specific knowledge for best results.
-context-db gives every file and folder a YAML `description` field. Files are
-organized in folders and subfolders, and a Python script dynamically generates a
-table of contents for any folder — creating a filesystem-based discovery tree
-with logarithmic progressive disclosure. Agents navigate to what they need and
-skip the rest.
+- Organizes md files in a hierarchical b-tree using the file system so context
+  can be efficiently loaded based on the task at hand: files and folders employ
+  yaml frontmatter like a `SKILL.md` file and the system uses a script to build
+  table of contents listings of every folder on demand. By convention, md file
+  databases have 5-10 items per folder and ~150 lines of context per file. This
+  way, the amount of context loaded scales with the task, not the total
+  knowledge base.
 
-## Why context-db
+- Leveraging the on demand table of contents generation and a few conventions,
+  `context-db` was designed to symlink into other databases, allowing you to
+  have common standards and procedures in global locations but easily
+  integratable into your project's overall md file database.
 
-- **Hierarchical.** Filesystem as a B-tree. Agents read frontmatter descriptions
-  at each level and branch into what's relevant, skipping everything else.
-- **Logarithmic cost.** 5-10 items per folder, ~100 lines per file. The amount
-  read scales with the task, not the total knowledge base.
-- **Minimal.** Contains what agents can't derive from code — conventions,
-  pitfalls, rationale, domain knowledge. Installed instructions enforce these
-  standards when agents generate content, and `/context-db maintain` actively
-  prunes content using this guidance.
+- A single `/context-db` skill is provided with various subcommands available,
+  most notably `/context-db prompt` and `/context-db update`. `prompt` allows
+  you to reinforce important context on demand as agents often forget startup
+  context during long sessions. `update` provides instructions so an agent
+  updates the md file database with important information needed for future
+  sessions using correct conventions and standards. Additional subcommands are
+  also provided to perform code reviews against your md knowledge database and
+  complete database maintenance which ensures the database is following
+  necessary conventions and structure.
 
-## Folder Structure
+- A `<root>/.context-db.json` file provides the ability to customize how the
+  system operates, allowing you to either provide more system knowledge on
+  startup or use the tool more on-demand. Also, new features are being added to
+  interact with the system using subagents, saving cost and providing
+  independent code reviews against the md file database.
+
+## Typical Folder Structure
 
 ```
 your-project/
 ├── .claude/
-│   ├── hooks/
-│   │   └── session-start-context-db.sh    ← ensures skill loads every session
 │   ├── rules/context-db.md                ← load the skill every conversation
-│   ├── settings.local.json                ← wires up the SessionStart hook
 │   └── skills/
 │       └── context-db/                    ← unified skill: all commands + scripts
 │           ├── SKILL.md
@@ -44,23 +52,25 @@ your-project/
 │               ├── context-db-generate-toc.py
 │               ├── context-db-main-agent.py
 │               └── context-db-sub-agent.py
+├── .context-db.json                       ← per-command mode/model/posture
 └── context-db/
     ├── <project-name>-project/            ← project-specific knowledge
     │   ├── <project-name>-project.md      ← folder description (frontmatter only)
+    │   ├── ON_START.md                    ← orientation, inlined once per session
+    │   ├── ON_ALL.md                      ← brief rules, inlined every command
     │   ├── architecture.md                ← document (frontmatter + body)
     │   └── data-model/
-    ├── general-standards/                 ← always loaded (like a CLAUDE.md)
     ├── coding-standards/                  ← project-agnostic (often symlinked)
     └── writing-standards/                 ← project-agnostic (often symlinked)
 ```
 
-The `<project-name>-project/` folder holds project-specific knowledge. Folders
-parallel to it (like `coding-standards/`) are project-agnostic and often
-symlinked from a shared standards repo.
+By conventions, the `<project-name>-project/` folder holds project-specific
+knowledge. Folders parallel to it (like `coding-standards/`) are
+project-agnostic and often symlinked from a shared standards repo.
 
-`general-standards/` is special-cased: the agent reads every file in it before
-any task. Use it for standards that apply universally — agent behavior, coding
-rules, language conventions.
+`ON_START.md` is inlined once per session at the top of the on-start payload;
+`ON_ALL.md` is inlined right before the user's instructions on every command.
+Both are optional.
 
 ## Wiring It In
 
@@ -84,8 +94,8 @@ symlinks can point anywhere. See
 > ["To alcohol! The cause of, and solution to, all of life's problems."](https://www.youtube.com/watch?v=SXyrYMxa-VI)
 > — Homer Simpson
 
-Context files are both the cause of, and solution to, many agent problems.
-There is [increasing discussion](https://arxiv.org/abs/2602.11988) about whether
+Context files are both the cause of, and solution to, many agent problems. There
+is [increasing discussion](https://arxiv.org/abs/2602.11988) about whether
 `CLAUDE.md`, `AGENTS.md`, `.cursorrules` actually help. Agents given context
 files that describe code state trust those descriptions, read less actual code,
 and perform _worse_ when descriptions drift. Cost goes up, success rate goes

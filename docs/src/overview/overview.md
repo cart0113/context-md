@@ -1,78 +1,71 @@
 # context-db
 
-Project knowledge for AI coding agents — organized as hierarchical Markdown so
-the agent can fetch only what it needs, and re-fetch it whenever a long session
-has dulled its memory.
+At its core, `context-db` works like an extended `AGENTS.md` or commonly used
+startup rules to load context into an agent session so your instructions and
+specifications are followed. However `context-db`:
 
-context-db is essentially an augmented `AGENTS.md`. The same problem (give the
-agent project-specific knowledge it can't infer from code), with a different
-shape (a B-tree of small files, navigable on demand) and a tooling layer that
-makes the knowledge re-loadable mid-session.
+- Organizes md files in a hierarchical b-tree using the file system so context
+  can be efficiently loaded based on the task at hand: files and folders employ
+  yaml frontmatter like a `SKILL.md` file and the system uses a script to build
+  table of contents listings of every folder on demand. By convention, md file
+  databases have 5-10 items per folder and ~150 lines of context per file. This
+  way, the amount of context loaded scales with the task, not the total
+  knowledge base.
 
-## Why context-db
+- Leveraging the on demand table of contents generation and a few conventions,
+  `context-db` was designed to symlink into other databases, allowing you to
+  have common standards and procedures in global locations but easily
+  integratable into your project's overall md file database.
 
-- **Hierarchical.** Filesystem as a B-tree. Agents read frontmatter descriptions
-  at each level and branch into what's relevant, skipping everything else.
-- **Logarithmic cost.** 5–10 items per folder, ~100 lines per file. The amount
-  read scales with the task, not the total knowledge base.
-- **Re-loadable.** Standing instructions fade over a long session. context-db
-  exposes a `prompt` command the user can invoke whenever the agent needs to be
-  re-pointed at the relevant project knowledge.
-- **Configurable posture.** A small `.context-db.json` controls which model runs
-  each command, whether the agent is allowed to read or write context-db on its
-  own initiative, and which files are inlined every session or every command.
-- **Minimal by enforcement.** The shipped instructions tell the agent to
-  document only what code can't reveal — conventions, pitfalls, rationale. The
-  `maintain` command actively prunes content that drifts.
+- A single `/context-db` skill is provided with various subcommands available,
+  most notably `/context-db prompt` and `/context-db update`. `prompt` allows
+  you to reinforce important context on demand as agents often forget startup
+  context during long sessions. `update` provides instructions so an agent
+  updates the md file database with important information needed for future
+  sessions using correct conventions and standards. Additional subcommands are
+  also provided to perform code reviews against your md knowledge database and
+  complete database maintenance which ensures the database is following
+  necessary conventions and structure.
 
-## How it works
+- A `<root>/.context-db.json` file provides the ability to customize how the
+  system operates, allowing you to either provide more system knowledge on
+  startup or use the tool more on-demand. Also, new features are being added to
+  interact with the system using subagents, saving cost and providing
+  independent code reviews against the md file database.
 
-Every folder under `context-db/` has a `<folder-name>.md` descriptor file with a
-YAML `description` frontmatter field. Every content file has the same field. A
-small Python script (`context-db-generate-toc.py`) walks any folder and prints a
-table of contents with each entry's description.
-
-The agent navigates the way it would any well-organized filesystem: read the
-TOC, follow descriptions that match the task, drill into subfolders the same
-way. Everything else is skipped. With ~5–10 items per folder and ~100 lines per
-file, the amount read is proportional to the task, not the total knowledge base.
-
-## Folder structure
+## Typical Folder Structure
 
 ```
 your-project/
 ├── .claude/
-│   ├── rules/context-db.md                ← standing rule loaded every session
-│   └── skills/context-db/                 ← unified skill: dispatcher + scripts
-│       ├── SKILL.md
-│       └── scripts/
-│           ├── context-db-generate-toc.py
-│           ├── context-db-main-agent.py
-│           └── context-db-sub-agent.py
+│   ├── rules/context-db.md                ← load the skill every conversation
+│   └── skills/
+│       └── context-db/                    ← unified skill: all commands + scripts
+│           ├── SKILL.md
+│           └── scripts/
+│               ├── context-db-generate-toc.py
+│               ├── context-db-main-agent.py
+│               └── context-db-sub-agent.py
 ├── .context-db.json                       ← per-command mode/model/posture
 └── context-db/
-    ├── <project-name>-project/            ← knowledge specific to this repo
-    │   ├── <project-name>-project.md      ← folder descriptor (frontmatter only)
+    ├── <project-name>-project/            ← project-specific knowledge
+    │   ├── <project-name>-project.md      ← folder description (frontmatter only)
     │   ├── ON_START.md                    ← orientation, inlined once per session
     │   ├── ON_ALL.md                      ← brief rules, inlined every command
-    │   └── architecture.md                ← topic file (frontmatter + body)
+    │   ├── architecture.md                ← document (frontmatter + body)
+    │   └── data-model/
     ├── coding-standards/                  ← project-agnostic (often symlinked)
     └── writing-standards/                 ← project-agnostic (often symlinked)
 ```
 
-The `<project-name>-project/` folder holds knowledge specific to this repo.
-Folders parallel to it are project-agnostic — usually symlinked from a shared
-standards repo so multiple projects pull from the same source. See
+By conventions, the `<project-name>-project/` folder holds project-specific
+knowledge. Folders parallel to it (like `coding-standards/`) are
+project-agnostic and often symlinked from a shared standards repo. See
 [Cross-Project Sharing](../guide/cross-project-sharing.md).
 
 `ON_START.md` is inlined once per session at the top of the on-start payload;
 `ON_ALL.md` is inlined right before the user's instructions on every command.
 Both are optional. See [Configuring Posture](../guide/configuring-posture.md).
-
-The install path shown above (`.claude/skills/context-db/`) is what Claude Code
-expects. The scripts themselves are pure Python and run in any terminal —
-Cursor, Codex, and other agents call the same dispatcher with their own wiring.
-See [Getting Started](../guide/getting-started.md).
 
 ## The late-session forgetting problem
 
