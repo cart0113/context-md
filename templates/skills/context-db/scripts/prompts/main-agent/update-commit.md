@@ -1,8 +1,13 @@
 # Update Commit
 
-Commit all affected context-db files. The bar for commit messages is lower than
-for context-db entries — they don't dilute the knowledge base. Capture session
-learning freely, including observations that didn't rise to context-db level.
+Commit every file touched in this session — code, docs, configuration,
+context-db, anything else. Scope is the whole session, not just the context-db
+update you just made. If `git status` shows changes outside context-db, they
+belong in this commit too unless the user has said otherwise.
+
+The bar for commit messages is lower than for context-db entries — they don't
+dilute the knowledge base. Capture session learning freely, including
+observations that didn't rise to context-db level.
 
 Before writing the commit message, check the `context-db/` for any commit
 message standards or procedures. Focus on:

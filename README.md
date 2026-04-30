@@ -2,36 +2,32 @@
 
 At its core, `context-db` works like an extended `AGENTS.md` or commonly used
 startup rules to load context into an agent session so your instructions and
-specifications are followed. However `context-db`:
+specifications are followed. However `context-db` provides:
 
-- Organizes md files in a hierarchical b-tree using the file system so context
-  can be efficiently loaded based on the task at hand: files and folders employ
-  yaml frontmatter like a `SKILL.md` file and the system uses a script to
-  dynamically build table of contents listings of every folder. By convention,
-  md file databases have 5-10 items per folder and ~150 lines of context per
-  file. This way, the amount of context loaded scales with the task, not the
-  total knowledge base.
+- **Lograhtmic Search**: md files are organized into hierarchical folders
+  (b-tree) so finding relevant context is logramthic (as opposed to a single
+  file or a single linear TOC of context system). Files and folders employ yaml
+  frontmatter like a `SKILL.md` file and the system uses a script to dynamically
+  build table of contents listings of every folder. By convention, md file
+  databases have 5-10 items per folder and ~150 lines of context per file. This
+  way, the amount of context loaded scales with the task, not the total
+  knowledge base.
 
-- Leveraging the on demand table of contents generation and a few conventions,
-  `context-db` was designed to symlink into other databases, allowing you to
-  have common standards and procedures in global locations but easily
-  integratable into your project's overall md file database.
+- **/context-db skill with subcommands**: A single `/context-db` skill is
+  provided with various subcommands available, most notably `/context-db prompt`
+  and `/context-db update`. `prompt` allows you to reinforce important context
+  on demand as agents often forget startup context during long sessions.
+  `update` provides instructions so an agent updates the md file database with
+  important information needed for future sessions using correct conventions and
+  standards. Additional subcommands are also provided to perform code reviews
+  against your md knowledge database and complete database maintenance which
+  ensures the database is following necessary conventions and structure.
 
-- A single `/context-db` skill is provided with various subcommands available,
-  most notably `/context-db prompt` and `/context-db update`. `prompt` allows
-  you to reinforce important context on demand as agents often forget startup
-  context during long sessions. `update` provides instructions so an agent
-  updates the md file database with important information needed for future
-  sessions using correct conventions and standards. Additional subcommands are
-  also provided to perform code reviews against your md knowledge database and
-  complete database maintenance which ensures the database is following
-  necessary conventions and structure.
-
-- A `<root>/.context-db.json` file provides the ability to customize how the
-  system operates, allowing you to either provide more system knowledge on
-  startup or use the tool more on-demand. Also, new features are being added to
-  interact with the system using subagents, saving cost and providing
-  independent code reviews against the md file database.
+- **Global and local context **: Leveraging the on demand table of contents
+  generation and a few conventions, `context-db` was designed to symlink into
+  other databases, allowing you to have common standards and procedures in
+  global locations but easily integratable into your project's overall md file
+  database.
 
 ## Typical Folder Structure
 
@@ -71,6 +67,12 @@ expects. The scripts themselves are pure Python and run in any terminal —
 Cursor, Codex, and other agents call the same dispatcher with their own wiring.
 
 ## Wiring it in
+
+- A `<root>/.context-db.json` file provides the ability to customize how the
+  system operates, allowing you to either provide more system knowledge on
+  startup or use the tool more on-demand. Also, new features are being added to
+  interact with the system using subagents, saving cost and providing
+  independent code reviews against the md file database.
 
 context-db works with any agent that has a project-level standing instruction
 mechanism — Claude Code rules, Cursor rules, `AGENTS.md`, `.cursorrules`,
