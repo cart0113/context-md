@@ -1,7 +1,8 @@
 # Sub-Agents
 
-> [!note] Work in progress. The sub-agent dispatch path is functional but still
-> being tuned. Defaults remain `main-agent` until the patterns stabilize.
+> [!tip] Under development. The sub-agent dispatch path is functional but still
+> being tuned. Defaults remain `main-agent` until the patterns stabilize —
+> expect the API and prompt shape to shift.
 
 Every sub-command can run in two modes, set per-command in `.context-db.json`:
 

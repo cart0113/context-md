@@ -1,0 +1,22 @@
+{
+  // Per-command keys fall back to these.
+  //   mode                     main-agent | sub-agent
+  //   remind-on-demand-read    when true, the dispatcher appends a reminder
+  //                            telling the agent not to read context-db unless
+  //                            the user explicitly invokes a /context-db command
+  //   remind-on-demand-update  same, for writes (only via /context-db update
+  //                            or /context-db maintain)
+  "defaults": {
+    "mode": "main-agent",
+    "remind-on-demand-read": false,
+    "remind-on-demand-update": false
+  },
+
+  // Inlined once per session at the top of /context-db load-start-context.
+  // Heavier orienting content is OK here — loads once.
+  "on_start": ["*-project/ON_START.md"],
+
+  // Inlined right before user instructions on every /context-db call.
+  // Keep BRIEF — real estate is at a premium.
+  "on_all": ["*-project/ON_ALL.md"]
+}

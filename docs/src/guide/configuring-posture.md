@@ -5,6 +5,11 @@ and what content gets inlined automatically. The default file ships with safe
 values; edit it to tune the project's posture. The file is JSON with
 `// line comments` allowed.
 
+To see how each setting on this page changes the literal text the dispatcher
+emits, see [Config Effects](../reference/config-effects.md) — it runs the
+dispatcher under several preset configs against an example fixture and captures
+the output, so the page can't drift from current behavior.
+
 ## Per-command settings
 
 Each sub-command can override `mode` (`main-agent` / `sub-agent`), `model`

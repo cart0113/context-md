@@ -1,0 +1,1 @@
+../../../../../../templates/skills/context-db/scripts/context-db-resolve-path.py

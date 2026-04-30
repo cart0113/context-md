@@ -68,6 +68,16 @@ it directly; many other agents also pick it up. Paste the rule body into
 Any agent that reads a project-level instruction file works. The only
 requirement is that the agent can run a Python script and read its output.
 
+## What the rule produces
+
+When the rule fires, the dispatcher prints the on-start payload —
+read-mechanics, context-usage framing, and any `on_start` / `on_all` matches
+inlined raw. To see the literal output (and how it changes under different
+`.context-db.json` settings), see
+[Config Effects](../reference/config-effects.md). For the full `--help` surface
+and the canonical instruction text the dispatcher emits per sub-command, see
+[CLI Reference](../reference/cli.md).
+
 ## Calling the script manually
 
 The script doesn't need an agent — it runs in any terminal:

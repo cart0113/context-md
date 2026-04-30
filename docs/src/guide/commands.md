@@ -6,37 +6,41 @@ context-db's behavior is exposed as sub-commands on a single dispatcher script:
 python3 .claude/skills/context-db/scripts/context-db-main-agent.py <command> [args]
 ```
 
-Each sub-command loads a different prompt template, may consult
-`.context-db.json` for mode/model overrides, and prints text the agent acts on.
-Multi-word instructions must be quoted as a single argument.
+This page describes each command at the level of "what would I use this for."
 
-The script runs in any terminal. Most agents wrap it for ergonomics — see
-[Per-agent invocation](#per-agent-invocation) below.
+- For the literal `--help` output and the verbatim instruction text each command
+  emits to the agent, see [CLI reference](../reference/cli.md) — it is generated
+  from the dispatcher and the prompt templates so it cannot drift.
+- For full payloads under different `.context-db.json` configs, see
+  [Config Effects](../reference/config-effects.md).
+- For per-command `mode` / `model` / posture overrides, see
+  [Configuring Posture](configuring-posture.md).
+
+Multi-word instructions must be quoted as a single shell argument. The script
+runs in any terminal; most agents wrap it for ergonomics — see
+[Per-agent invocation](#per-agent-invocation).
 
 ## Read commands
 
 ### `prompt <instruction>`
 
-Navigate context-db for context relevant to the instruction. The agent loads the
-TOC, follows descriptions that match, reads selectively, and applies what it
-finds. Use this when the agent should ground its next steps in project knowledge
-before answering or coding.
-
-```
-prompt "How does the dispatcher decide whether to spawn a sub-agent?"
-```
+Re-inject context relevant to a specific piece of work. Use it when the agent
+should ground its next step in project knowledge before answering or coding —
+the standing rule already loads the on-start payload, but `prompt` pulls in just
+the topical material the next task needs. Adding `--use-git-diff` focuses on
+context-db files touched recently.
 
 ### `pre-review <plan>`
 
-Pre-flight check. The agent fetches standards and conventions that apply to a
-described change and surfaces anything the plan would violate before code is
-written. Cheaper to fix a plan than to fix the diff.
+Pre-flight check before code is written. Surfaces standards and conventions that
+apply to the described change so the plan can be adjusted before implementation.
+Cheaper to fix a plan than to fix the diff.
 
 ### `review`
 
 Audits the current diff or branch against context-db conventions. Reads only the
-standards relevant to what changed. Defaults to a stronger model because review
-needs more reasoning depth than navigation.
+standards relevant to what changed. Defaults to a stronger model than the read
+commands because review needs more reasoning depth than navigation.
 
 ## Write commands
 
@@ -54,24 +58,24 @@ update --push "Same, and ship it"
 
 ### `maintain [folder]`
 
-Seven-phase audit: structural health, content freshness, content value, coverage
-gaps, doc drift, cross-references, reindex. Default posture is to **cut** —
-leave context-db smaller and sharper. An optional folder argument scopes the
-audit. Interactive by default; can run in `Review` or `Autonomous` mode.
+Multi-phase audit that keeps context-db from bloating into what it was built to
+avoid: structural health, content freshness, content value, coverage gaps, doc
+drift, cross-references, reindex. Default posture is to **cut**. An optional
+folder argument scopes the audit.
 
 ## Loader commands
 
 ### `load-start-context`
 
-Emits the on-start payload: read-mechanics, context-usage framing, and every
-file matched by `on_start` and `on_all` globs from `.context-db.json`, inlined
-raw. The default rule calls this once per session. See [Rules](rules.md) and
+Emits the on-start payload — read mechanics, context-usage framing, and every
+file matched by `on_start` and `on_all` globs. The default rule calls this once
+per session. See [Rules](rules.md) and
 [Configuring Posture](configuring-posture.md).
 
 ### `load-manual <section>`
 
-Loads a single instruction template by name — `read-mechanics`,
-`write-mechanics`, `pre-review`, `review`, and others. Useful mid-conversation
+Loads a single instruction template by name (`read-mechanics`,
+`write-mechanics`, `pre-review`, `review`, and others). Useful mid-conversation
 when the agent has lost a specific skill instruction.
 
 ```
@@ -81,8 +85,8 @@ load-manual write-mechanics
 
 ## Per-agent invocation
 
-Each agent has its own way of making the dispatcher ergonomic. The underlying
-script call is identical.
+The underlying script call is identical across agents. Each one has its own
+ergonomic wrapper.
 
 ### Claude Code
 
@@ -99,7 +103,7 @@ everything to the dispatcher.
 ### Cursor
 
 No native skill system, so the simplest path is to call the script directly from
-the chat with the terminal tool, or define a shell alias:
+chat with the terminal tool, or define a shell alias:
 
 ```bash
 alias cdb='python3 .claude/skills/context-db/scripts/context-db-main-agent.py'
@@ -113,9 +117,3 @@ it consistently.
 
 The agent runs the script directly via its shell tool, exactly as shown at the
 top of this page. No wrapper required.
-
-## Where to set per-command behavior
-
-Mode (`main-agent` / `sub-agent`), model (`haiku` / `sonnet` / `opus`), and
-posture toggles are configured per command in `.context-db.json`. See
-[Configuring Posture](configuring-posture.md).

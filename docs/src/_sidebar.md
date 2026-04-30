@@ -10,3 +10,5 @@
   - [Efficacy](guide/efficacy.md)
 - **Reference**
   - [Reference](reference/specification.md)
+  - [CLI Reference](reference/cli.md)
+  - [Config Effects](reference/config-effects.md)
