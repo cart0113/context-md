@@ -379,8 +379,6 @@ available sections:
   review                  Review changes against conventions
   update-general          File learnings into context-db
   update-commit           How to write commit messages
-  remind-on-demand-update Reminder: only update context-db when the user explicitly invokes a command
-  remind-on-demand-read   Reminder: only read context-db when the user explicitly invokes a command
 ```
 
 ## `/context-db read` {#read}

@@ -76,8 +76,6 @@ MANUAL_SECTIONS = [
     ("review",               "Review changes against conventions"),
     ("update-general",       "File learnings into context-db"),
     ("update-commit",        "How to write commit messages"),
-    ("remind-on-demand-update",       "Reminder: only update context-db when the user explicitly invokes a command"),
-    ("remind-on-demand-read",         "Reminder: only read context-db when the user explicitly invokes a command"),
 ]
 
 DEFAULT_CONFIG = {
@@ -576,10 +574,6 @@ def cmd_main_agent(command, prompt, cmd_config, config, debug=False):
         emit_always_read_notice(config, context_db_rel)
         emit_on_section(config, "on_all", context_db_rel)
         emit_on_command(config, command, context_db_rel)
-        if cmd_config.get("remind-on-demand-update"):
-            print_template("remind-on-demand-update")
-        if cmd_config.get("remind-on-demand-read"):
-            print_template("remind-on-demand-read")
         if prompt:
             print_section("update-user-instructions", prompt)
         if commit:
@@ -601,10 +595,6 @@ def cmd_main_agent(command, prompt, cmd_config, config, debug=False):
         print_template(command)
         emit_on_section(config, "on_all", context_db_rel)
         emit_on_command(config, command, context_db_rel)
-        if cmd_config.get("remind-on-demand-update"):
-            print_template("remind-on-demand-update")
-        if cmd_config.get("remind-on-demand-read"):
-            print_template("remind-on-demand-read")
         if prompt:
             print_section(f"{command}-user-instructions", prompt)
 
@@ -649,10 +639,6 @@ def cmd_sub_agent(command, prompt, cmd_config, config, debug=False):
     print_template(command, subdir="spawn", run_cmd=run_cmd)
     emit_on_section(config, "on_all", context_db_rel)
     emit_on_command(config, command, context_db_rel)
-    if cmd_config.get("remind-on-demand-update"):
-        print_template("remind-on-demand-update")
-    if cmd_config.get("remind-on-demand-read"):
-        print_template("remind-on-demand-read")
 
     # For pre-review, print user instructions separately so the agent
     # incorporates them into the plan it sends to the sub-agent
@@ -702,11 +688,6 @@ def cmd_maintain(args, config):
     emit_always_read_notice(config, context_db_rel)
     emit_on_section(config, "on_all", context_db_rel)
     emit_on_command(config, "maintain", context_db_rel)
-    cmd_config = get_command_config(config, "maintain")
-    if cmd_config.get("remind-on-demand-update"):
-        print_template("remind-on-demand-update")
-    if cmd_config.get("remind-on-demand-read"):
-        print_template("remind-on-demand-read")
 
 
 

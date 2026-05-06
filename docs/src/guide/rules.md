@@ -26,9 +26,8 @@ its output.
 
 The script does the rest — read-mechanics, context-usage framing, and every file
 matched by `on_start` / `on_all` globs gets inlined into the agent's context.
-Posture (reactive vs. active) is controlled by the `remind-on-demand-read` /
-`remind-on-demand-update` flags in `.context-db.json`, not the rule. See
-[Configuring Posture](configuring-posture.md).
+See [Configuring Posture](configuring-posture.md) for the always-on globs and
+per-command tuning.
 
 The exact path to the script depends on where it's installed. The canonical
 install location is `.claude/skills/context-db/scripts/context-db-main-agent.py`

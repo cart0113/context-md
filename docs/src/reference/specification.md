@@ -105,8 +105,6 @@ JSONC (JSON with `// line comments` and trailing commas). All keys optional.
   // Fallback for any per-command key not set below.
   "defaults": {
     "mode": "main-agent", // main-agent | sub-agent
-    "remind-on-demand-read": false,
-    "remind-on-demand-update": false,
   },
 
   // Glob patterns relative to context-db/.
@@ -127,16 +125,13 @@ commands, `sonnet` for `review` and `update`); set `model` only to override.
 
 ### Per-command keys
 
-| Key                       | Type | Default      | Effect                                                                                                                        |
-| ------------------------- | ---- | ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `mode`                    | enum | `main-agent` | `main-agent` runs in the active conversation. `sub-agent` spawns a separate process.                                          |
-| `model`                   | enum | `haiku`      | Model used for sub-agent dispatch and recommended for main-agent execution.                                                   |
-| `remind-on-demand-read`   | bool | `false`      | Appends a reminder telling the agent to read context-db only when the user explicitly invokes a `/context-db` command.        |
-| `remind-on-demand-update` | bool | `false`      | Appends a reminder telling the agent to write to context-db only via explicit `/context-db update` or `/context-db maintain`. |
+| Key     | Type | Default      | Effect                                                                               |
+| ------- | ---- | ------------ | ------------------------------------------------------------------------------------ |
+| `mode`  | enum | `main-agent` | `main-agent` runs in the active conversation. `sub-agent` spawns a separate process. |
+| `model` | enum | `haiku`      | Model used for sub-agent dispatch and recommended for main-agent execution.          |
 
 `update` and `maintain` are pinned to `main-agent` regardless of `mode` because
-they edit the working tree. Set the `remind-on-demand-*` flags in `defaults` to
-apply them across all commands; per-command overrides are still allowed.
+they edit the working tree.
 
 ### Always-loaded content
 

@@ -151,37 +151,6 @@ costs you on `prompt` calls, not on every command. The `on_<command>` lists
 default to empty — opt in only when a rule genuinely needs to ride along on
 every invocation of that operation.
 
-## Reactive toggles
-
-Two flags append a reminder to a sub-command's output instructing the agent
-**not** to touch context-db on its own. They're how a project switches
-context-db from "active participant" to "available on request."
-
-- `remind-on-demand-read` — reminds the agent it should only read context-db
-  when the user explicitly invokes a `/context-db` command.
-- `remind-on-demand-update` — reminds the agent it should only write to
-  context-db via explicit `/context-db update` or `/context-db maintain`.
-
-```jsonc
-{
-  "defaults": {
-    "remind-on-demand-read": true,
-    "remind-on-demand-update": true,
-  },
-}
-```
-
-Both default to `false`. Set them in `defaults` to apply across all commands;
-per-command overrides still work if you want, say, reactive lookups but normal
-write behavior on `update` / `maintain`.
-
-The naming is deliberate: these flags don't _enforce_ anything, they append
-prompt reminders. `remind-` is honest about the mechanism.
-
-The matching `load-manual remind-on-demand-read` and
-`load-manual remind-on-demand-update` sections let the same reminders be loaded
-mid-conversation if the agent starts drifting.
-
 ## Project-folder convention
 
 The dispatcher detects `context-db/<name>-project/` folders by glob. Convention

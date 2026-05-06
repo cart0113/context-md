@@ -62,11 +62,15 @@ folder for this repo." Read-side agents pick up the priority signal via TOC
 navigation rather than prompt-level reinforcement. See lessons-learned for the
 read/write asymmetry rationale.
 
-## On-demand toggles added (2026-04-26, renamed 2026-04-27)
+## Per-subcommand on\_<command> tier added; reminder system removed (2026-05-06)
 
-`remind-on-demand-update` and `remind-on-demand-read` manual entries plus
-matching config flags in `.context-db.json` (default `false`, settable in
-`defaults` to apply across all commands). Lets users opt into a fully-reactive
-posture where the agent only touches context-db when explicitly invoked. Renamed
-from `no-auto-*` 2026-04-27 — the new prefix is honest about the mechanism
-(appends a prompt reminder, not enforcement). See lessons-learned for rationale.
+Extended `on_start` / `on_all` with `on_prompt`, `on_pre_review`, `on_review`,
+`on_update`, `on_maintain` — each fires only when its subcommand runs, inlined
+right after `on_all`. Same day, deleted the `remind-on-demand-read` /
+`remind-on-demand-update` flags and their two prompt templates. The
+`on_<command>` mechanism subsumes the use case: a project that wants the agent
+to stay hands-off can drop a one-line "do not touch context-db unless invoked"
+supplement into `on_all` (or any `on_<command>`) and get the same recency-driven
+reminder without a dedicated flag, manual entry, or template. Two flags + two
+templates + four if-blocks gone. See lessons-learned for the surface-area
+rationale.

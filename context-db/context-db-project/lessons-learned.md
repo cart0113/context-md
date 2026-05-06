@@ -144,19 +144,19 @@ from globally-applicable context). The asymmetry is intentional. Maintain's
 frontmatter enforcement is the load-bearing piece that makes "let frontmatter do
 the talking" actually work for reads.
 
-## On-demand posture: config flags + manual entries
+## Retire specialized primitives once a flexible one subsumes them
 
-`ON_START.md` is the right place for project orientation, but prose guidance
-fades over a session. For users who want context-db fully reactive (the agent
-neither reads nor writes unless explicitly invoked), surface that as config
-flags `remind-on-demand-read` / `remind-on-demand-update` in `.context-db.json`
-— they emit a tagged reminder at the end of every command's output, so recency
-keeps the rule fresh. The matching manual entries
-(`load-manual remind-on-demand-read` / `remind-on-demand-update`) let the user
-load the same rule mid-session for ad-hoc enforcement. Default both to `false`
-so the agent's natural initiative isn't suppressed by accident. Set in
-`defaults` to apply across all commands; per-command overrides still work.
+The `on_<command>` tier (per-subcommand always-on globs) made the
+`remind-on-demand-read` / `remind-on-demand-update` flags redundant: any "don't
+touch context-db unless invoked" reminder a project wants is just a one-line
+markdown file wired into `on_all` or the relevant `on_<command>`. Keeping both
+meant two flags, two prompt templates, four if-blocks across the dispatcher's
+handlers, three doc sections, and a config-effects scenario — all to deliver
+text the user can author directly.
 
-The naming is deliberate: the flags don't _enforce_ anything — they append a
-reminder to the prompt. `remind-` is honest about the mechanism; the older
-`no-auto-*` framing implied hard gating that doesn't exist.
+The lesson: when a more flexible primitive subsumes a specialized one, delete
+the specialized one. Two ways to do the same thing is worse than one — every
+extra surface is config to remember, docs to maintain, code to keep working, and
+a decision the user has to make at adoption. The flexible primitive also lets
+users tune the wording, scope it per-command, or skip it entirely; the
+specialized flag could only emit one fixed string.

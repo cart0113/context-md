@@ -136,7 +136,7 @@ bytes the agent will see when the rule fires.
 - [Commands](commands.md) — the sub-command catalog.
 - [Rules](rules.md) — how the rule body works and how to customize it.
 - [Configuring Posture](configuring-posture.md) — `.context-db.json`, `on_start`
-  / `on_all`, reactive toggles.
+  / `on_all` / per-subcommand globs.
 - [Cross-Project Sharing](cross-project-sharing.md) — symlink folders from other
   repos.
 - [Reference](../reference/specification.md) — format specification.

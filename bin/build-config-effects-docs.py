@@ -43,46 +43,12 @@ SCENARIOS = [
         "config": {
             "defaults": {
                 "mode": "main-agent",
-                "remind-on-demand-read": False,
-                "remind-on-demand-update": False,
             },
             "on_start": ["*-project/ON_START.md"],
             "on_all": ["*-project/ON_ALL.md"],
         },
         "commands": [
             ("load-start-context", ["load-start-context"]),
-            (
-                'prompt "How do I add a new payment endpoint?"',
-                ["prompt", "How do I add a new payment endpoint?"],
-            ),
-            (
-                'update "Refunds must be filed as new entries, not edits"',
-                [
-                    "update",
-                    "Refunds must be filed as new entries, not edits",
-                ],
-            ),
-        ],
-    },
-    {
-        "name": "Reactive posture",
-        "anchor": "reactive",
-        "blurb": (
-            "`remind-on-demand-read` and `remind-on-demand-update` set to "
-            "`true`. The dispatcher appends reminders telling the agent to "
-            "read or write context-db only when the user explicitly invokes "
-            "a `/context-db` command."
-        ),
-        "config": {
-            "defaults": {
-                "mode": "main-agent",
-                "remind-on-demand-read": True,
-                "remind-on-demand-update": True,
-            },
-            "on_start": ["*-project/ON_START.md"],
-            "on_all": ["*-project/ON_ALL.md"],
-        },
-        "commands": [
             (
                 'prompt "How do I add a new payment endpoint?"',
                 ["prompt", "How do I add a new payment endpoint?"],
@@ -107,8 +73,6 @@ SCENARIOS = [
         "config": {
             "defaults": {
                 "mode": "main-agent",
-                "remind-on-demand-read": False,
-                "remind-on-demand-update": False,
             },
             "on_start": [],
             "on_all": [],
@@ -134,8 +98,6 @@ SCENARIOS = [
         "config": {
             "defaults": {
                 "mode": "main-agent",
-                "remind-on-demand-read": False,
-                "remind-on-demand-update": False,
             },
             "on_start": [],
             "on_all": ["*-project/ON_ALL.md"],
