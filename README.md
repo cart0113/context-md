@@ -1,37 +1,42 @@
 # context-db
 
-At its core, `context-db` works like an extended `AGENTS.md` or commonly-used
-startup rules to load context into an agent session so your instructions and
-specifications are followed. However `context-db` provides:
+`context-db` is a project-knowledge layer for coding agents. The starting
+picture is `AGENTS.md` or `CLAUDE.md` — a project's standing instructions for
+the agent — but hierarchical instead of monolithic, re-loadable on demand
+instead of only at session start, and bounded by a maintenance pass that keeps
+it from bloating into what it was built to avoid. The four ideas:
 
-- **Logarithmic search**: md files are organized into hierarchical folders
-  (b-tree) so finding relevant context is logarithmic (as opposed to a single
-  file or a single linear TOC of context system). Files and folders use yaml
-  frontmatter like a `SKILL.md` file and the system uses a script to dynamically
-  build table of contents listings of every folder. By convention, md file
-  databases have 5–10 items per folder and ~150 lines of context per file. This
-  way, the amount of context loaded scales with the task, not the total
-  knowledge base.
+- **Hierarchical Markdown, navigated on demand.** Every file and folder carries
+  YAML `description` frontmatter (the same shape as a `SKILL.md`). A small
+  Python script renders the table of contents for any folder at call time, so
+  the agent walks a B-tree of descriptions and reads only the leaves it needs.
+  By convention, 5–10 items per folder and ~150 lines per file: context loaded
+  scales with the task, not with the size of the database.
 
-- **An update protocol that keeps the database fresh**: agents file what they
-  learn back into the md file database — gotchas, decisions, conventions — using
-  the project's own writing standards and folder-routing conventions, so updates
-  respect the same frontmatter and structure rules as hand-written entries. A
-  multi-phase maintenance pass trims dead content and fixes drift, so the
-  database does not bloat into what it was built to avoid.
+- **Re-injection at decision points, not only at startup.** Standards loaded
+  once at session start compact out of the agent's context on long sessions; by
+  turn 40 the agent has drifted back to its training defaults.
+  `/context-db prompt` re-fetches just the slice relevant to the next step.
+  `/context-db pre-review` surfaces the standards a planned change has to clear
+  before code is written. `/context-db review` audits the diff against them
+  after the fact. Each is a deliberate moment where the user re-points the agent
+  at the project's conventions, without having to remember which standards apply
+  or where they live.
 
-- **`/context-db` skill with subcommands**: a single `/context-db` skill exposes
-  the system to the user. `/context-db prompt` re-injects context relevant to
-  the next piece of work — agents drift from startup context on long sessions,
-  and this puts them back on the rails. `/context-db update` files learnings via
-  the protocol above. Additional subcommands run pre-flight checks against your
-  standards (`pre-review`), audit a diff against them (`review`), and drive
-  database maintenance (`maintain`).
+- **A bounded write loop.** `/context-db update` files what the agent learned —
+  gotchas, decisions, conventions — using the same frontmatter and folder
+  routing as hand-written entries, so the protocol that produces the database is
+  the same one that grows it. `/context-db maintain` runs a multi-phase audit
+  whose default posture is to **cut**: trim dead content, prune redundant
+  entries, fix drift, reindex. Updates and maintenance balance each other so the
+  database stays useful without bloating.
 
-- **Global and local context**: leveraging the on-demand TOC generation and a
-  few conventions, `context-db` was designed to symlink into other databases,
-  allowing common standards and procedures to live in global locations but
-  integrate easily into a project's overall md file database.
+- **Global and local knowledge in one tree.** Symlink folders from a personal or
+  team standards repo and they appear in the TOC alongside project-local content
+  — coding standards, writing conventions, library runbooks, written once and
+  used from every project. Per-subcommand `on_<command>` lists let
+  project-specific notes layer on top of those shared, read-only docs without
+  forking them.
 
 ## Typical folder structure
 
@@ -85,20 +90,29 @@ overrides, see
 [Configuring Posture](https://cart0113.github.io/context-db/#/guide/configuring-posture)
 and [Commands](https://cart0113.github.io/context-db/#/guide/commands).
 
-## The late-session forgetting problem
+## Why this design
 
-Anyone who has run an agent on a long task has seen the failure mode: session
-starts well, the agent reads the standing instructions, follows them for the
-first dozen turns, then drifts. The standards get compacted out of context. By
-turn 40 the agent is back to its training defaults.
+Context files are often a net negative for coding agents.
+[ETH Zurich research](https://www.infoq.com/news/2026/03/agents-context-file-value-review/)
+found LLM-generated context files reduced task success by ~3% and increased cost
+by 20%+; even hand-written ones showed only marginal gains. Agents trust the
+file, read less of the actual code, and amplify any drift between description
+and reality. Separately,
+[Chroma's context-rot study](https://www.trychroma.com/research/context-rot)
+showed every frontier model performs worse as input length grows, well below
+context limits — so even correct context degrades the agent when there is too
+much of it.
 
-context-db fights this by making the standards explicitly re-loadable. The
-`prompt` command pulls in just the context relevant to the next piece of work.
-The `pre-review` command surfaces the standards that apply to a planned change
-before code is written. The `review` command audits the diff against them after
-the fact. Each is a deliberate moment where the user re-points the agent at the
-project's conventions — without having to remember which standards apply or
-where they live.
+context-db's design follows from those two findings. Hierarchical Markdown plus
+an on-demand TOC keeps the loaded slice small. Re-injection commands keep that
+slice _fresh_ as the session grows. The `maintain` audit cuts content that no
+longer earns its tokens. The litmus test for every entry: if you removed it,
+would the agent make a mistake it wouldn't otherwise make? Anything that doesn't
+clear that bar is, by the ETH Zurich finding, a _negative_-value document.
+
+For the full treatment — including the negative result that motivated the
+project — see
+[Efficacy](https://cart0113.github.io/context-db/#/guide/efficacy).
 
 ## Getting started
 
@@ -112,15 +126,24 @@ where they live.
 4. Drop a `.context-db.json` at the repo root (the shipped one is a good
    starting point).
 
-Full guide:
+Full guide and per-agent install paths:
 [Getting Started](https://cart0113.github.io/context-db/#/guide/getting-started).
-For when context engineering helps, when it hurts, and the design choices that
-keep context-db on the right side of that line, see
-[Efficacy](https://cart0113.github.io/context-db/#/guide/efficacy).
 
 ## Documentation
 
-Full docs: https://cart0113.github.io/context-db/
+Full docs: <https://cart0113.github.io/context-db/>.
+
+- [Commands](https://cart0113.github.io/context-db/#/guide/commands) — `prompt`,
+  `pre-review`, `review`, `update`, `maintain`.
+- [Configuring Posture](https://cart0113.github.io/context-db/#/guide/configuring-posture)
+  — `.context-db.json`, `on_start` / `on_all` / per-subcommand globs.
+- [Config Effects](https://cart0113.github.io/context-db/#/reference/config-effects)
+  — the literal text each command injects, generated from the dispatcher.
+- [Reference](https://cart0113.github.io/context-db/#/reference/specification) —
+  format specification.
+- [Efficacy](https://cart0113.github.io/context-db/#/guide/efficacy) — research,
+  test results, and the principles that keep context-db on the helpful side of
+  the line.
 
 ## License
 
