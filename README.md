@@ -34,7 +34,7 @@ it from bloating into what it was built to avoid. The four ideas:
 - **Global and local knowledge in one tree.** Symlink folders from a personal or
   team standards repo and they appear in the TOC alongside project-local content
   — coding standards, writing conventions, library runbooks, written once and
-  used from every project. Per-subcommand `on_<command>` lists let
+  used from every project. Per-sub-command `on_<command>` lists let
   project-specific notes layer on top of those shared, read-only docs without
   forking them.
 
@@ -78,11 +78,11 @@ mechanism — Claude Code rules, Cursor rules, `AGENTS.md`, `.cursorrules`,
 
 That single delegation gives the agent the read mechanics, the context-usage
 framing, and every file matched by `on_start` / `on_all` globs in
-`.context-db.json`. The five subcommands — `prompt`, `pre-review`, `review`,
+`.context-db.json`. The five sub-commands — `prompt`, `pre-review`, `review`,
 `update`, `maintain` — handle context re-injection, plan checks, diff audits,
 filing learnings, and database upkeep respectively.
 
-The exact text each subcommand injects into the agent's context is shown in
+The exact text each sub-command injects into the agent's context is shown in
 [Config Effects](https://cart0113.github.io/context-db/#/reference/config-effects),
 generated from the dispatcher itself so it can't drift from what the agent
 actually receives. For the underlying schema, posture toggles, and per-command
@@ -116,17 +116,20 @@ project — see
 
 ## Getting started
 
-1. Copy `templates/skills/context-db/` into `.claude/skills/context-db/` (or
-   symlink it).
-2. Copy `templates/rules/context-db.md` into `.claude/rules/context-db.md`, or
-   paste its body into `AGENTS.md` / `.cursor/rules/` / wherever your agent
-   reads standing instructions.
-3. Copy `templates/context-db-files/ON_START.md` and `ON_ALL.md` into
-   `context-db/<project-name>-project/` and populate them.
-4. Drop a `.context-db.json` at the repo root (the shipped one is a good
-   starting point).
+1. **Create your context-db.** A `context-db/` directory at the repo root with a
+   `<project-name>-project/` subfolder and a frontmatter-only descriptor.
+2. **Install the dispatcher** at `.claude/skills/context-db/` — copy or symlink
+   from `templates/skills/context-db/`.
+3. **Drop a `.context-db.json` at the repo root** (the shipped template is a
+   good starting point) and add `ON_START.md` / `ON_ALL.md` to the project
+   folder.
+4. **Wire up the rule.** Copy `templates/rules/context-db.md` to wherever your
+   agent reads standing instructions: `.claude/rules/`, `.cursor/rules/`,
+   `AGENTS.md`, `.github/copilot-instructions.md`, etc.
+5. **Verify** by running the TOC script and `load-start-context` and reading the
+   output.
 
-Full guide and per-agent install paths:
+Full walkthrough and per-agent paths:
 [Getting Started](https://cart0113.github.io/context-db/#/guide/getting-started).
 
 ## Documentation
@@ -136,7 +139,7 @@ Full docs: <https://cart0113.github.io/context-db/>.
 - [Commands](https://cart0113.github.io/context-db/#/guide/commands) — `prompt`,
   `pre-review`, `review`, `update`, `maintain`.
 - [Configuring Posture](https://cart0113.github.io/context-db/#/guide/configuring-posture)
-  — `.context-db.json`, `on_start` / `on_all` / per-subcommand globs.
+  — `.context-db.json`, `on_start` / `on_all` / per-sub-command globs.
 - [Config Effects](https://cart0113.github.io/context-db/#/reference/config-effects)
   — the literal text each command injects, generated from the dispatcher.
 - [Reference](https://cart0113.github.io/context-db/#/reference/specification) —

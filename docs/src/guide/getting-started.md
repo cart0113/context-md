@@ -50,7 +50,7 @@ cp .context-db.json your-project/.context-db.json
 Edit per-command mode/model/posture as needed. See
 [Configuring Posture](configuring-posture.md).
 
-## 3. Install `ON_START.md` and `ON_ALL.md` (optional)
+## 3. Install `ON_START.md` and `ON_ALL.md` (recommended)
 
 Drop the boilerplate into the project folder and edit:
 
@@ -136,7 +136,7 @@ bytes the agent will see when the rule fires.
 - [Commands](commands.md) — the sub-command catalog.
 - [Rules](rules.md) — how the rule body works and how to customize it.
 - [Configuring Posture](configuring-posture.md) — `.context-db.json`, `on_start`
-  / `on_all` / per-subcommand globs.
+  / `on_all` / per-sub-command globs.
 - [Cross-Project Sharing](cross-project-sharing.md) — symlink folders from other
   repos.
 - [Reference](../reference/specification.md) — format specification.

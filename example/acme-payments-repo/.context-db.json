@@ -13,8 +13,8 @@
   // Keep BRIEF — real estate is at a premium.
   "on_all": ["*-project/ON_ALL.md"]
 
-  // Per-subcommand always-on lists. Inlined right after on_all when the
-  // matching subcommand runs (and only then). Use for rules scoped to a
+  // Per-sub-command always-on lists. Inlined right after on_all when the
+  // matching sub-command runs (and only then). Use for rules scoped to a
   // single operation — e.g. local notes layered on a shared, read-only doc
   // folder. Optional; default to []. See guide/configuring-posture.md.
   //

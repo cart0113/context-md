@@ -9,6 +9,6 @@
   - [Sub-Agents](guide/sub-agents.md)
   - [Efficacy](guide/efficacy.md)
 - **Reference**
-  - [Reference](reference/specification.md)
+  - [Specification](reference/specification.md)
   - [CLI Reference](reference/cli.md)
   - [Config Effects](reference/config-effects.md)

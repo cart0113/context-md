@@ -122,11 +122,12 @@ context-db/
         └── local-notes.md       ← what we've actually run into here
 ```
 
-The shared `context-db/mex-parser/` folder ships from upstream and you can't
-edit it. Discoveries specific to this project — gotchas, workarounds, version
-pins — go into `acme-project/mex-parser/local-notes.md`. Wire that file into
-`on_prompt` so the agent always sees the local supplement before answering a
-question:
+The shared `context-db/mex-parser/` folder ships from upstream as a symlink (see
+[Cross-Project Sharing](cross-project-sharing.md) for the symlink mechanics) and
+you can't edit it. Discoveries specific to this project — gotchas, workarounds,
+version pins — go into `acme-project/mex-parser/local-notes.md`. Wire that file
+into `on_prompt` so the agent always sees the local supplement before answering
+a question:
 
 ```jsonc
 {

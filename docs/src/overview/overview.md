@@ -34,7 +34,7 @@ it from bloating into what it was built to avoid. The four ideas:
 - **Global and local knowledge in one tree.** Symlink folders from a personal or
   team standards repo and they appear in the TOC alongside project-local content
   — coding standards, writing conventions, library runbooks, written once and
-  used from every project. Per-subcommand `on_<command>` lists let
+  used from every project. Per-sub-command `on_<command>` lists let
   project-specific notes layer on top of those shared, read-only docs without
   forking them.
 
@@ -79,11 +79,11 @@ mechanism — Claude Code rules, Cursor rules, `AGENTS.md`, `.cursorrules`,
 
 That single delegation gives the agent the read mechanics, the context-usage
 framing, and every file matched by `on_start` / `on_all` globs in
-`.context-db.json`. The five subcommands — `prompt`, `pre-review`, `review`,
+`.context-db.json`. The five sub-commands — `prompt`, `pre-review`, `review`,
 `update`, `maintain` — handle context re-injection, plan checks, diff audits,
 filing learnings, and database upkeep respectively.
 
-The exact text each subcommand injects into the agent's context is shown in
+The exact text each sub-command injects into the agent's context is shown in
 [Config Effects](../reference/config-effects.md), generated from the dispatcher
 itself so it can't drift from what the agent actually receives. For the
 underlying schema, posture toggles, and per-command overrides, see
@@ -121,6 +121,6 @@ project — see [Efficacy](../guide/efficacy.md).
 - [Commands](../guide/commands.md) — the sub-command catalog: `prompt`,
   `pre-review`, `review`, `update`, `maintain`.
 - [Configuring Posture](../guide/configuring-posture.md) — `.context-db.json`,
-  `on_start` / `on_all` / per-subcommand globs.
+  `on_start` / `on_all` / per-sub-command globs.
 - [Reference](../reference/specification.md) — format specification, CLI, and
   the literal text the dispatcher emits under different configs.
