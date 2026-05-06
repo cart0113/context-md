@@ -112,6 +112,13 @@ JSONC (JSON with `// line comments` and trailing commas). All keys optional.
   // Glob patterns relative to context-db/.
   "on_start": ["*-project/ON_START.md"],
   "on_all": ["*-project/ON_ALL.md"],
+
+  // Per-sub-command always-on lists. Optional; default to [].
+  "on_prompt": [],
+  "on_pre_review": [],
+  "on_review": [],
+  "on_update": [],
+  "on_maintain": [],
 }
 ```
 
@@ -133,10 +140,15 @@ apply them across all commands; per-command overrides are still allowed.
 
 ### Always-loaded content
 
-| Key        | Type           | Effect                                                                             |
-| ---------- | -------------- | ---------------------------------------------------------------------------------- |
-| `on_start` | array of globs | Files inlined raw at the top of `load-start-context` (once per session).           |
-| `on_all`   | array of globs | Files inlined raw at the end of every sub-command, right before user instructions. |
+| Key             | Type           | Effect                                                                             |
+| --------------- | -------------- | ---------------------------------------------------------------------------------- |
+| `on_start`      | array of globs | Files inlined raw at the top of `load-start-context` (once per session).           |
+| `on_all`        | array of globs | Files inlined raw at the end of every sub-command, right before user instructions. |
+| `on_prompt`     | array of globs | Files inlined right after `on_all` when `/context-db prompt` runs. Default `[]`.   |
+| `on_pre_review` | array of globs | Same, scoped to `/context-db pre-review`. Default `[]`.                            |
+| `on_review`     | array of globs | Same, scoped to `/context-db review`. Default `[]`.                                |
+| `on_update`     | array of globs | Same, scoped to `/context-db update`. Default `[]`.                                |
+| `on_maintain`   | array of globs | Same, scoped to `/context-db maintain`. Default `[]`.                              |
 
 Globs are relative to `context-db/`. Folders expand recursively. Frontmatter is
 stripped from inlined content; body is emitted as-is.

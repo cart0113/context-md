@@ -37,18 +37,24 @@ sub-agent mode — see [Sub-Agents](sub-agents.md).
 
 ## On-start and always-on content
 
-Two glob lists pull project files into the agent's context.
+Glob lists pull project files into the agent's context. Three tiers, ordered
+from broadest scope to narrowest.
 
 - `on_start` — fires once per session via the rule. Heavier orienting content is
   OK here; it loads once.
 - `on_all` — fires at the end of every sub-command, right before the user's
   instructions. Recency wins: this content is the freshest thing in the agent's
   context when it acts. Keep it brief.
+- `on_<command>` — fires only when that specific sub-command runs, right after
+  `on_all`. One key per sub-command: `on_prompt`, `on_pre_review`, `on_review`,
+  `on_update`, `on_maintain`. Use to surface rules that only matter for one
+  operation, without bloating every other command.
 
 ```jsonc
 {
   "on_start": ["*-project/ON_START.md"],
   "on_all": ["*-project/ON_ALL.md"],
+  "on_prompt": ["*-project/PROMPT_NOTES.md"],
 }
 ```
 
@@ -97,6 +103,53 @@ re-reads on every command. A 50-line `on_all` makes every `prompt` call 50 lines
 more expensive. Reserve it for the rules where the cost of **not** having them
 recently in context is higher than the cost of repeating them. Most projects
 need somewhere between 0 and 10 lines.
+
+### `on_<command>` — per-operation supplements
+
+Same mechanism as `on_all`, but scoped to a single sub-command. The dispatcher
+emits the matched content right after `on_all` and right before the user's
+instructions when (and only when) that sub-command runs.
+
+Use it when a rule only applies to one operation. The canonical case is layering
+**local notes on top of a shared, read-only doc folder**:
+
+```text
+context-db/
+├── mex-parser/                  ← symlinked from another repo, read-only
+│   └── ...                      ← global mex-parser usage docs
+└── acme-project/
+    └── mex-parser/
+        └── local-notes.md       ← what we've actually run into here
+```
+
+The shared `context-db/mex-parser/` folder ships from upstream and you can't
+edit it. Discoveries specific to this project — gotchas, workarounds, version
+pins — go into `acme-project/mex-parser/local-notes.md`. Wire that file into
+`on_prompt` so the agent always sees the local supplement before answering a
+question:
+
+```jsonc
+{
+  "on_prompt": ["acme-project/mex-parser/local-notes.md"],
+}
+```
+
+Now any `/context-db prompt` call inlines `local-notes.md` right before the
+user's instruction, without forcing the same content onto `update` or `review`
+calls that don't need it. As soon as the agent has touched the parser enough
+times to learn the local quirks, those quirks are in front of it on every
+question.
+
+Other natural fits:
+
+- `on_review` — review checklists or "things you keep missing" lists.
+- `on_update` — house rules about where new context-db entries belong.
+- `on_maintain` — invariants the audit pass should never violate.
+
+Same cost discipline applies as `on_all`, but scoped: a 50-line `on_prompt` only
+costs you on `prompt` calls, not on every command. The `on_<command>` lists
+default to empty — opt in only when a rule genuinely needs to ride along on
+every invocation of that operation.
 
 ## Reactive toggles
 

@@ -121,6 +121,40 @@ SCENARIOS = [
             ),
         ],
     },
+    {
+        "name": "Per-subcommand supplement (`on_prompt`)",
+        "anchor": "on-prompt",
+        "blurb": (
+            "`on_prompt` carries content scoped to `/context-db prompt` only. "
+            "Here it reuses the project's `ON_START.md` to demonstrate "
+            "placement: the `on_prompt` block is inlined right after `on_all` "
+            "and right before the user's instructions when `prompt` runs, but "
+            "is absent when `update` runs."
+        ),
+        "config": {
+            "defaults": {
+                "mode": "main-agent",
+                "remind-on-demand-read": False,
+                "remind-on-demand-update": False,
+            },
+            "on_start": [],
+            "on_all": ["*-project/ON_ALL.md"],
+            "on_prompt": ["*-project/ON_START.md"],
+        },
+        "commands": [
+            (
+                'prompt "How do I add a new payment endpoint?"',
+                ["prompt", "How do I add a new payment endpoint?"],
+            ),
+            (
+                'update "Refunds must be filed as new entries, not edits"',
+                [
+                    "update",
+                    "Refunds must be filed as new entries, not edits",
+                ],
+            ),
+        ],
+    },
 ]
 
 

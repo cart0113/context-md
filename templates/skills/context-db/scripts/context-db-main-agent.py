@@ -31,6 +31,39 @@ from pathlib import Path
 
 COMMANDS = ["prompt", "pre-review", "review", "update", "maintain"]
 
+
+def on_command_key(command):
+    """Map command name (e.g. `pre-review`) to its config key (`on_pre_review`)."""
+    return f"on_{command.replace('-', '_')}"
+
+
+# Config keys whose values are glob lists of files inlined into agent output.
+# - `on_start` fires once per session via `load-start-context`.
+# - `on_all` fires at the end of every subcommand.
+# - `on_<command>` fires only when that subcommand is invoked, right after
+#   `on_all`. Use to surface rules that only matter for specific operations
+#   (e.g. local supplements to a global doc that should sit in front of every
+#   `prompt`).
+ON_KEYS = ("on_start", "on_all") + tuple(on_command_key(c) for c in COMMANDS)
+
+# Human-readable labels used by the always-read notice.
+ON_KEY_LABELS = {
+    "on_start": "the `on_start` set — inlined once per session at start",
+    "on_all": (
+        "the `on_all` set — inlined before every /context-db command "
+        "(prompt, pre-review, review, update, maintain)"
+    ),
+    "on_prompt": "the `on_prompt` set — inlined on every /context-db prompt",
+    "on_pre_review": (
+        "the `on_pre_review` set — inlined on every /context-db pre-review"
+    ),
+    "on_review": "the `on_review` set — inlined on every /context-db review",
+    "on_update": "the `on_update` set — inlined on every /context-db update",
+    "on_maintain": (
+        "the `on_maintain` set — inlined on every /context-db maintain"
+    ),
+}
+
 # Available sections for load-manual. Each entry is (name, description).
 MANUAL_SECTIONS = [
     ("read-mechanics",       "How to navigate context-db via TOC script"),
@@ -59,6 +92,13 @@ DEFAULT_CONFIG = {
     # Globs inlined on EVERY subcommand invocation (prompt, pre-review,
     # review, update, maintain). Keep BRIEF — real estate is at a premium.
     "on_all": [],
+    # Globs inlined only when the matching subcommand is invoked, right
+    # after `on_all`. Targeted always-on content for a single operation.
+    "on_prompt": [],
+    "on_pre_review": [],
+    "on_review": [],
+    "on_update": [],
+    "on_maintain": [],
     "prompt": {},
     "pre-review": {},
     "review": {
@@ -98,7 +138,7 @@ def load_config(config_path):
         for cmd in COMMANDS:
             if cmd in user:
                 config[cmd].update(user[cmd])
-        for key in ("on_start", "on_all"):
+        for key in ON_KEYS:
             if key in user:
                 config[key] = list(user[key])
     return config
@@ -394,16 +434,16 @@ def cmd_load_manual(args):
                    context_db_rel=context_db_rel)
 
 
-# ── on_all / on_start emitters ────────────────────────────────────────────
-# Shared between the load-start-context subcommand and the
-# --load-start-context flag on other subcommands. Content is printed raw so
-# the author of the .md file controls their own framing — no preamble, no
-# section header, no path attribution injected by the tool.
+# ── on_<key> emitters ──────────────────────────────────────────────────────
+# Shared by load-start-context, the --load-start-context flag on other
+# subcommands, and per-subcommand handlers. Content is printed raw so the
+# author of the .md file controls their own framing — no preamble, no section
+# header, no path attribution injected by the tool.
 
 
-def emit_on_all(config, context_db_rel):
-    """Print on_all content raw. No-op if empty or nothing matches."""
-    patterns = config.get("on_all", [])
+def emit_on_section(config, key, context_db_rel):
+    """Print files matched by `config[key]` raw. No-op if empty or no matches."""
+    patterns = config.get(key, [])
     if not patterns:
         return
     content = inline_patterns(patterns, context_db_rel)
@@ -411,14 +451,9 @@ def emit_on_all(config, context_db_rel):
         print(f"\n{content}")
 
 
-def emit_on_start(config, context_db_rel):
-    """Print on_start content raw. No-op if empty or nothing matches."""
-    patterns = config.get("on_start", [])
-    if not patterns:
-        return
-    content = inline_patterns(patterns, context_db_rel)
-    if content:
-        print(f"\n{content}")
+def emit_on_command(config, command, context_db_rel):
+    """Emit the per-subcommand always-on block for `command`."""
+    emit_on_section(config, on_command_key(command), context_db_rel)
 
 
 def emit_project_folder_reinforcement(context_db_rel):
@@ -454,14 +489,15 @@ def emit_project_folder_reinforcement(context_db_rel):
 
 def emit_always_read_notice(config, context_db_rel):
     """For write commands (update, maintain), warn the agent which files
-    are inlined every time so it applies strong judgement before writing
+    are inlined automatically so it applies strong judgement before writing
     to them. Skips entirely if nothing is configured.
     """
-    on_start = expand_patterns(
-        config.get("on_start", []), context_db_rel
-    )
-    on_all = expand_patterns(config.get("on_all", []), context_db_rel)
-    if not on_start and not on_all:
+    sections = []
+    for key in ON_KEYS:
+        files = expand_patterns(config.get(key, []), context_db_rel)
+        if files:
+            sections.append((key, files))
+    if not sections:
         return
 
     lines = ["\n# Always-Read Files", ""]
@@ -474,21 +510,9 @@ def emit_always_read_notice(config, context_db_rel):
         "before adding anything."
     )
     lines.append("")
-    if on_start:
-        lines.append(
-            "These files are the `on_start` set — inlined once per "
-            "session at start:"
-        )
-        for p in on_start:
-            lines.append(f"- `{p}`")
-        lines.append("")
-    if on_all:
-        lines.append(
-            "These files are the `on_all` set — inlined before every "
-            "/context-db command (prompt, pre-review, review, update, "
-            "maintain):"
-        )
-        for p in on_all:
+    for key, files in sections:
+        lines.append(f"These files are {ON_KEY_LABELS[key]}:")
+        for p in files:
             lines.append(f"- `{p}`")
         lines.append("")
     print("\n".join(lines).rstrip())
@@ -519,8 +543,8 @@ def cmd_load_start_context(args, config):
     print_template("read-mechanics", toc=toc, resolve=resolve,
                    context_db_rel=context_db_rel)
     print_template("context-usage")
-    emit_on_start(config, context_db_rel)
-    emit_on_all(config, context_db_rel)
+    emit_on_section(config, "on_start", context_db_rel)
+    emit_on_section(config, "on_all", context_db_rel)
 
 
 def cmd_main_agent(command, prompt, cmd_config, config, debug=False):
@@ -550,7 +574,8 @@ def cmd_main_agent(command, prompt, cmd_config, config, debug=False):
         print_template("update-general",
                         context_db_rel=context_db_rel)
         emit_always_read_notice(config, context_db_rel)
-        emit_on_all(config, context_db_rel)
+        emit_on_section(config, "on_all", context_db_rel)
+        emit_on_command(config, command, context_db_rel)
         if cmd_config.get("remind-on-demand-update"):
             print_template("remind-on-demand-update")
         if cmd_config.get("remind-on-demand-read"):
@@ -574,7 +599,8 @@ def cmd_main_agent(command, prompt, cmd_config, config, debug=False):
                     print_template("recent-changes",
                                    recent_changes_block=block)
         print_template(command)
-        emit_on_all(config, context_db_rel)
+        emit_on_section(config, "on_all", context_db_rel)
+        emit_on_command(config, command, context_db_rel)
         if cmd_config.get("remind-on-demand-update"):
             print_template("remind-on-demand-update")
         if cmd_config.get("remind-on-demand-read"):
@@ -621,7 +647,8 @@ def cmd_sub_agent(command, prompt, cmd_config, config, debug=False):
         print(f"model: {model}")
 
     print_template(command, subdir="spawn", run_cmd=run_cmd)
-    emit_on_all(config, context_db_rel)
+    emit_on_section(config, "on_all", context_db_rel)
+    emit_on_command(config, command, context_db_rel)
     if cmd_config.get("remind-on-demand-update"):
         print_template("remind-on-demand-update")
     if cmd_config.get("remind-on-demand-read"):
@@ -665,7 +692,7 @@ def cmd_maintain(args, config):
     target_path = args.path if args.path else f"{context_db_rel}/"
 
     if getattr(args, "load_start_context", False):
-        emit_on_start(config, context_db_rel)
+        emit_on_section(config, "on_start", context_db_rel)
 
     print_template("write-mechanics", toc=toc, context_db_rel=context_db_rel)
     emit_project_folder_reinforcement(context_db_rel)
@@ -673,7 +700,8 @@ def cmd_maintain(args, config):
     print_template("maintain-instructions", toc=toc, resolve=resolve,
                     context_db_rel=context_db_rel, target_path=target_path)
     emit_always_read_notice(config, context_db_rel)
-    emit_on_all(config, context_db_rel)
+    emit_on_section(config, "on_all", context_db_rel)
+    emit_on_command(config, "maintain", context_db_rel)
     cmd_config = get_command_config(config, "maintain")
     if cmd_config.get("remind-on-demand-update"):
         print_template("remind-on-demand-update")
@@ -725,7 +753,7 @@ def dispatch_command(args, config):
     # always-on rules.
     context_db_rel = find_context_db()
     if getattr(args, "load_start_context", False):
-        emit_on_start(config, context_db_rel)
+        emit_on_section(config, "on_start", context_db_rel)
 
     # Build effective config: defaults ← command overrides ← CLI flags
     cmd_config = get_command_config(config, command)
