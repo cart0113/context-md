@@ -26,3 +26,4 @@ fast-api-test/
 build/
 context-db/general-standards
 context-db/general-coding-standards
+.context-db.json
