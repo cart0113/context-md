@@ -18,7 +18,6 @@ Run `--help` to see available sections with descriptions.
 
 ## Available sections
 
-- `on-demand` — don't browse context-db, wait for /context-db commands
 - `read-mechanics` — how to navigate context-db via TOC script
 - `prompt` — instructions for prompt command
 - `context-usage` — context-db is a map, not truth
@@ -32,8 +31,19 @@ Run `--help` to see available sections with descriptions.
 
 ## Design rationale
 
-Startup instructions are now delivered via rule files
-(`templates/rules/startup-*.md`) that users copy or symlink to
-`.claude/rules/context-db.md`. Rules survive compaction and require no hook or
-config. `load-manual` is the mid-conversation escape hatch for loading
+On-start instructions are delivered via a single rule file
+(`templates/rules/context-db.md`) that users copy or symlink to
+`.claude/rules/context-db.md`. The rule just tells the agent to run
+`/context-db load-on-start-context`. Rules survive compaction and require no
+hook or config. `load-manual` is the mid-conversation escape hatch for loading
 individual instruction sections on demand.
+
+Distinct from two sibling subcommands:
+
+- `load-on-start-context` inlines the project's always-load content (see
+  `load-on-start-context-sub-command.md`). That's about project-specific bytes.
+- `read` inlines arbitrary file/folder content by path or glob. That's a generic
+  content-delivery primitive.
+
+`load-manual` is neither — it loads skill-internal instruction templates (how
+the agent should behave), not project content.

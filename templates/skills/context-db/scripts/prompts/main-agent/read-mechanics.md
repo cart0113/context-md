@@ -19,3 +19,18 @@ If `{context_db_rel}/general-standards/` exists, you MUST read every file in it.
 These are global standards that apply to ALL tasks — like a CLAUDE.md. Do NOT
 skip them. Do NOT filter them by relevance. Read them first, before anything
 else.
+
+### Following cross-references
+
+Cross-reference paths inside context-db files are file-relative (e.g.
+`./tools/lef.md`, `../foo/bar.md`). Forward refs (`./` or descending) read
+directly — the path resolves correctly.
+
+Refs containing `..` MUST be resolved via the resolver script before reading. A
+file may live inside a symlinked subtree, in which case lexical `..` collapse
+gives the wrong target. Run:
+
+python3 {resolve} <containing-file> <link>
+
+The script prints an absolute path; pass that to Read. Do not reason about `..`
+paths yourself.

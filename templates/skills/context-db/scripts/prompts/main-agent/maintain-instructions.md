@@ -11,10 +11,19 @@ Before starting, ask the user how they want to run this:
 
 Wait for their answer before proceeding.
 
-Phase 0 — Top-level convention: context-db should contain a `<name>-project/`
-folder for knowledge specific to this project. Other top-level folders are
-broader standards or symlinks shared across projects. If no project folder
-exists, ask the user whether to create one.
+Phase 0 — Project folder convention: `{context_db_rel}/` should contain exactly
+one `<name>-project/` folder for knowledge specific to this repo. Other
+top-level folders are broader standards or symlinks shared across projects.
+
+- If no project folder exists, ask the user whether to create one.
+- If a project folder exists, open its descriptor at
+  `<name>-project/<name>-project.md` and ensure the frontmatter `description`
+  opens by marking the folder as the main project folder for this repo — e.g.
+  `description: Main project folder for this repo. <one-line summary of what's inside>`.
+  Read-side agents rely on this marker to weight the project folder above the
+  parallel external folders, so do not skip it.
+- If multiple `*-project/` folders exist, surface this to the user — the
+  convention is one per repo.
 
 Phase 1 — Structural health: 5-10 items per folder, 50-150 lines per file, 2-3
 levels deep max. Split oversized files/folders, merge tiny ones, fill missing
@@ -35,8 +44,11 @@ pitfalls. Add only genuinely non-obvious entries.
 Phase 5 — Documentation drift: Compare context-db against project docs. Where
 they disagree, trust the project assets.
 
-Phase 6 — Cross-references: Fix broken "See also" links. Add new ones only where
-genuinely helpful.
+Phase 6 — Cross-references: All cross-reference paths must be file-relative
+(`./foo.md`, `../bar/baz.md`). Convert any absolute or project-rooted paths
+(`context-db/...`) to file-relative form. Verify `..`-style links resolve
+correctly: `python3 {resolve} <containing-file> <link>`. Fix broken links. Add
+new ones only where genuinely helpful.
 
 Phase 7 — Reindex: Re-read every file, update all description fields to match
 current content. Work bottom-up (deepest folders first). Run TOC on every

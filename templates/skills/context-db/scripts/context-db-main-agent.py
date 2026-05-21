@@ -13,6 +13,7 @@ Dependencies: python3 (stdlib only)
 import argparse
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -32,7 +33,6 @@ COMMANDS = ["prompt", "pre-review", "review", "update", "maintain"]
 
 # Available sections for load-manual. Each entry is (name, description).
 MANUAL_SECTIONS = [
-    ("on-demand",            "Don't browse context-db — wait for /context-db commands"),
     ("read-mechanics",       "How to navigate context-db via TOC script"),
     ("prompt",               "Instructions for prompt command"),
     ("context-usage",        "Context-db is a map, not truth — verify against code"),
@@ -43,6 +43,8 @@ MANUAL_SECTIONS = [
     ("review",               "Review changes against conventions"),
     ("update-general",       "File learnings into context-db"),
     ("update-commit",        "How to write commit messages"),
+    ("no-auto-update",       "Do not auto-update context-db without explicit user instruction"),
+    ("no-auto-read",         "Do not auto-read context-db without explicit user instruction"),
 ]
 
 DEFAULT_CONFIG = {
@@ -50,6 +52,13 @@ DEFAULT_CONFIG = {
         "mode": "sub-agent",
         "model": "haiku",
     },
+    # Globs (relative to context-db/) whose content is inlined on session
+    # start via `load-on-start-context`. Use for orienting content the agent
+    # needs once per session.
+    "on_start": [],
+    # Globs inlined on EVERY subcommand invocation (prompt, pre-review,
+    # review, update, maintain). Keep BRIEF — real estate is at a premium.
+    "on_all": [],
     "prompt": {},
     "pre-review": {},
     "review": {
@@ -87,6 +96,9 @@ def load_config(config_path):
         for cmd in COMMANDS:
             if cmd in user:
                 config[cmd].update(user[cmd])
+        for key in ("on_start", "on_all"):
+            if key in user:
+                config[key] = list(user[key])
     return config
 
 
@@ -134,11 +146,190 @@ def find_sub_agent_script():
     return rel
 
 
+def find_resolve_script():
+    """Find context-db-resolve-path.py. Returns path relative to cwd."""
+    rel = ".claude/skills/context-db/scripts/context-db-resolve-path.py"
+    if os.path.exists(rel):
+        return rel
+    parent_rel = os.path.join("..", rel)
+    if os.path.exists(parent_rel):
+        return parent_rel
+    candidate = Path(__file__).resolve().parent / "context-db-resolve-path.py"
+    if candidate.exists():
+        return str(candidate)
+    return rel
+
+
 def find_context_db():
     """Find context-db/ relative to cwd."""
     if os.path.isdir("context-db"):
         return "context-db"
     return "."
+
+
+def find_project_folders(context_db_rel):
+    """Return sorted names of top-level `*-project/` folders inside context-db/.
+
+    Convention: a single `context-db/<name>-project/` folder holds knowledge
+    specific to this repo. Other top-level folders are external — global
+    standards, shared conventions, or folders symlinked in from other repos.
+    Returns folder names only (no path), e.g. `["context-db-project"]`.
+    Returns `[]` if context-db is missing or no project folder exists.
+    """
+    if context_db_rel == "." or not os.path.isdir(context_db_rel):
+        return []
+    base = Path(context_db_rel)
+    return sorted(
+        p.name for p in base.glob("*-project")
+        if p.is_dir()
+    )
+
+
+# ── Git diff collection ─────────────────────────────────────────────────────
+# Used by --use-git-diff on the prompt command to show which context-db files
+# were touched recently (likely relevant to where a prior session left off).
+
+DIFF_LINE_CAP = 500
+
+
+def collect_recent_changes(context_db_rel, n):
+    """Collect recent git changes in context-db/. Returns formatted block, or None.
+
+    n=0: uncommitted changes only.
+    n>0: uncommitted + last n commits touching context-db/.
+
+    If combined diff exceeds DIFF_LINE_CAP, falls back to --stat summary.
+    """
+    if context_db_rel == ".":
+        # No context-db/ folder found — diff would be scoped to everything.
+        return None
+
+    def run(args):
+        try:
+            r = subprocess.run(
+                args, capture_output=True, text=True, timeout=10,
+            )
+            return r.stdout if r.returncode == 0 else ""
+        except (subprocess.SubprocessError, FileNotFoundError):
+            return ""
+
+    sections = []  # list of (header, stat_text, full_diff_text)
+
+    uncommitted_full = run(["git", "diff", "HEAD", "--", context_db_rel])
+    if uncommitted_full.strip():
+        uncommitted_stat = run(
+            ["git", "diff", "HEAD", "--stat", "--", context_db_rel]
+        )
+        sections.append(
+            ("## Uncommitted Changes", uncommitted_stat, uncommitted_full)
+        )
+
+    if n > 0:
+        commits_full = run(
+            ["git", "log", "-n", str(n), "-p", "--", context_db_rel]
+        )
+        if commits_full.strip():
+            commits_stat = run([
+                "git", "log", "-n", str(n), "--stat",
+                "--format=%h %s", "--", context_db_rel,
+            ])
+            header = f"## Last {n} Commit{'s' if n != 1 else ''}"
+            sections.append((header, commits_stat, commits_full))
+
+    if not sections:
+        return None
+
+    total_lines = sum(len(full.splitlines()) for _, _, full in sections)
+    use_stat = total_lines > DIFF_LINE_CAP
+
+    out = []
+    if use_stat:
+        out.append(
+            f"(Diff exceeded {DIFF_LINE_CAP} lines — showing file stats only. "
+            f"Use `git diff HEAD -- {context_db_rel}/` or "
+            f"`git log -p -n {n} -- {context_db_rel}/` for full content.)\n"
+        )
+    for header, stat, full in sections:
+        out.append(header)
+        out.append("")
+        out.append((stat if use_stat else full).strip())
+        out.append("")
+
+    return "\n".join(out).strip()
+
+
+# ── Pattern expansion and file inlining ─────────────────────────────────────
+# Used by `read`, `load-on-start-context`, and the --load-on-start-context /
+# --load-always flags. Patterns are globs resolved relative to base_dir
+# (context-db/ by default). Folders match expand to every file underneath.
+
+
+def expand_patterns(patterns, base_dir):
+    """Expand glob patterns (relative to base_dir) into a list of files.
+
+    Each pattern may match files or folders. Folders expand recursively to
+    every file beneath them. Deduplicates while preserving pattern order.
+    Returns paths relative to cwd.
+    """
+    base = Path(base_dir) if base_dir else Path(".")
+    seen = set()
+    files = []
+    for pattern in patterns:
+        for match in sorted(base.glob(pattern)):
+            if match.is_file():
+                rel = str(match)
+                if rel not in seen:
+                    seen.add(rel)
+                    files.append(rel)
+            elif match.is_dir():
+                for sub in sorted(match.rglob("*")):
+                    if sub.is_file():
+                        rel = str(sub)
+                        if rel not in seen:
+                            seen.add(rel)
+                            files.append(rel)
+    return files
+
+
+def strip_frontmatter(text):
+    """Strip a leading YAML frontmatter block (delimited by ---) from text.
+
+    If no frontmatter is present or the block is malformed, returns the
+    original text unchanged.
+    """
+    lines = text.splitlines(keepends=True)
+    if not lines or lines[0].rstrip() != "---":
+        return text
+    for i in range(1, len(lines)):
+        if lines[i].rstrip() == "---":
+            return "".join(lines[i + 1:]).lstrip("\n")
+    return text
+
+
+def inline_file(path):
+    """Return a single file's content, with YAML frontmatter stripped.
+
+    No path header, no wrapping — just the readable body. Frontmatter is
+    TOC-routing metadata the agent does not need to see when content is
+    being inlined directly into the prompt.
+    """
+    try:
+        content = Path(path).read_text()
+    except OSError as e:
+        return f"(error reading {path}: {e})\n"
+    return strip_frontmatter(content).rstrip() + "\n"
+
+
+def inline_patterns(patterns, base_dir):
+    """Expand patterns and return concatenated inlined content.
+
+    Files are separated by a blank line. Returns empty string if nothing
+    matches.
+    """
+    files = expand_patterns(patterns, base_dir)
+    if not files:
+        return ""
+    return "\n".join(inline_file(f) for f in files)
 
 
 # ── Template loading ────────────────────────────────────────────────────────
@@ -195,18 +386,149 @@ def print_section(tag, content):
 def cmd_load_manual(args):
     """Load a single instruction template by name."""
     toc = find_toc_script()
+    resolve = find_resolve_script()
     context_db_rel = find_context_db()
-    print_template(args.section, subdir="main-agent", toc=toc,
+    print_template(args.section, subdir="main-agent", toc=toc, resolve=resolve,
                    context_db_rel=context_db_rel)
 
 
-def cmd_main_agent(command, prompt, cmd_config, debug=False):
+# ── on_all / on_start emitters ────────────────────────────────────────────
+# Shared between the load-on-start-context subcommand and the
+# --load-on-start-context flag on other subcommands. Content is printed raw so
+# the author of the .md file controls their own framing — no preamble, no
+# section header, no path attribution injected by the tool.
+
+
+def emit_on_all(config, context_db_rel):
+    """Print on_all content raw. No-op if empty or nothing matches."""
+    patterns = config.get("on_all", [])
+    if not patterns:
+        return
+    content = inline_patterns(patterns, context_db_rel)
+    if content:
+        print(f"\n{content}")
+
+
+def emit_on_start(config, context_db_rel):
+    """Print on_start content raw. No-op if empty or nothing matches."""
+    patterns = config.get("on_start", [])
+    if not patterns:
+        return
+    content = inline_patterns(patterns, context_db_rel)
+    if content:
+        print(f"\n{content}")
+
+
+def emit_project_folder_reinforcement(context_db_rel):
+    """For write commands, name the project folder so the agent writes there
+    (not into parallel folders, which are external/shared). No-op if no
+    `*-project/` folder is detected.
+    """
+    folders = find_project_folders(context_db_rel)
+    if not folders:
+        return
+    if len(folders) == 1:
+        body = (
+            f"This repo's project folder is `{context_db_rel}/{folders[0]}/`. "
+            f"That is where knowledge specific to this project lives. Other "
+            f"top-level folders under `{context_db_rel}/` are external — "
+            f"global standards, shared conventions, or folders symlinked in "
+            f"from other repos.\n\n"
+            f"When writing or maintaining context-db, default to writing "
+            f"inside the project folder. Only edit a parallel folder when "
+            f"the content is genuinely not project-specific."
+        )
+    else:
+        items = "\n".join(f"- `{context_db_rel}/{f}/`" for f in folders)
+        body = (
+            f"Multiple `*-project/` folders exist at the top level of "
+            f"`{context_db_rel}/`:\n\n{items}\n\n"
+            f"Convention is one project folder per repo. Mention this to the "
+            f"user — they may want to consolidate. In the meantime, write to "
+            f"whichever is the active project folder for the current task."
+        )
+    print_section("project-folder", body)
+
+
+def emit_always_read_notice(config, context_db_rel):
+    """For write commands (update, maintain), warn the agent which files
+    are inlined every time so it applies strong judgement before writing
+    to them. Skips entirely if nothing is configured.
+    """
+    on_start = expand_patterns(
+        config.get("on_start", []), context_db_rel
+    )
+    on_all = expand_patterns(config.get("on_all", []), context_db_rel)
+    if not on_start and not on_all:
+        return
+
+    lines = ["\n# Always-Read Files", ""]
+    lines.append(
+        "The files listed below are inlined into the agent's context "
+        "automatically. Every line in them costs tokens on every "
+        "invocation, so real estate is at a premium. Use strong "
+        "judgement before writing to them — most learnings belong in a "
+        "regular context-db file, not here. When in doubt, ask the user "
+        "before adding anything."
+    )
+    lines.append("")
+    if on_start:
+        lines.append(
+            "These files are the `on_start` set — inlined once per "
+            "session at start:"
+        )
+        for p in on_start:
+            lines.append(f"- `{p}`")
+        lines.append("")
+    if on_all:
+        lines.append(
+            "These files are the `on_all` set — inlined before every "
+            "/context-db command (prompt, pre-review, review, update, "
+            "maintain):"
+        )
+        for p in on_all:
+            lines.append(f"- `{p}`")
+        lines.append("")
+    print("\n".join(lines).rstrip())
+
+
+def cmd_read(args):
+    """Inline full content for one or more paths/globs.
+
+    Files are printed verbatim with an H2 path header; folders are
+    expanded recursively. Paths resolve against cwd, not context-db/,
+    so the caller controls the base.
+    """
+    files = expand_patterns(args.paths, ".")
+    if not files:
+        print("(no files matched)")
+        return
+    print("\n".join(inline_file(f) for f in files))
+
+
+def cmd_load_on_start_context(args, config):
+    """Print the on-start context: read-mechanics + context-usage + inlined on_start and on_all files,
+    then the read mechanics the agent needs to navigate context-db.
+    """
+    toc = find_toc_script()
+    resolve = find_resolve_script()
+    context_db_rel = find_context_db()
+
+    print_template("read-mechanics", toc=toc, resolve=resolve,
+                   context_db_rel=context_db_rel)
+    print_template("context-usage")
+    emit_on_start(config, context_db_rel)
+    emit_on_all(config, context_db_rel)
+
+
+def cmd_main_agent(command, prompt, cmd_config, config, debug=False):
     """Print tagged prompt sections so the calling agent navigates context-db itself.
 
     This is the "main-agent" mode — no sub-process, the agent uses its own
     tools (Read, Bash) to browse the TOC and read files.
     """
     toc = find_toc_script()
+    resolve = find_resolve_script()
     context_db_rel = find_context_db()
 
     if debug:
@@ -217,13 +539,20 @@ def cmd_main_agent(command, prompt, cmd_config, debug=False):
     if command == "update":
         commit = cmd_config.get("commit", False)
         if commit:
-            print_template("read-mechanics", toc=toc,
+            print_template("read-mechanics", toc=toc, resolve=resolve,
                             context_db_rel=context_db_rel)
         print_template("write-mechanics", toc=toc,
                         context_db_rel=context_db_rel)
+        emit_project_folder_reinforcement(context_db_rel)
         print_template("persist-to-context-db")
         print_template("update-general",
                         context_db_rel=context_db_rel)
+        emit_always_read_notice(config, context_db_rel)
+        emit_on_all(config, context_db_rel)
+        if cmd_config.get("no-auto-update"):
+            print_template("no-auto-update")
+        if cmd_config.get("no-auto-read"):
+            print_template("no-auto-read")
         if prompt:
             print_section("update-user-instructions", prompt)
         if commit:
@@ -232,15 +561,27 @@ def cmd_main_agent(command, prompt, cmd_config, debug=False):
             print_template("update-push")
     else:
         # Read commands: prompt, pre-review, review
-        print_template("read-mechanics", toc=toc, context_db_rel=context_db_rel)
+        print_template("read-mechanics", toc=toc, resolve=resolve,
+                       context_db_rel=context_db_rel)
         if command == "prompt":
             print_template("context-usage")
+            use_git_diff = cmd_config.get("use-git-diff")
+            if use_git_diff is not None:
+                block = collect_recent_changes(context_db_rel, use_git_diff)
+                if block:
+                    print_template("recent-changes",
+                                   recent_changes_block=block)
         print_template(command)
+        emit_on_all(config, context_db_rel)
+        if cmd_config.get("no-auto-update"):
+            print_template("no-auto-update")
+        if cmd_config.get("no-auto-read"):
+            print_template("no-auto-read")
         if prompt:
             print_section(f"{command}-user-instructions", prompt)
 
 
-def cmd_sub_agent(command, prompt, cmd_config, debug=False):
+def cmd_sub_agent(command, prompt, cmd_config, config, debug=False):
     """Print spawn instructions telling the main agent to invoke the sub-agent.
 
     The main agent will run the printed command via Bash, which spawns an
@@ -250,6 +591,7 @@ def cmd_sub_agent(command, prompt, cmd_config, debug=False):
     sub_agent = find_sub_agent_script()
     model = cmd_config["model"]
     rerun_init = cmd_config.get("rerun-init", False)
+    context_db_rel = find_context_db()
 
     # Build the shell command the main agent will run.
     # For pre-review, the agent fills in the plan; for others, prompt is baked in.
@@ -261,6 +603,10 @@ def cmd_sub_agent(command, prompt, cmd_config, debug=False):
     cmd_parts.append(f"--model {model}")
     if command == "review" and cmd_config.get("context-db-only-review"):
         cmd_parts.append("--context-db-only-review")
+    if command == "prompt":
+        use_git_diff = cmd_config.get("use-git-diff")
+        if use_git_diff is not None:
+            cmd_parts.append(f"--use-git-diff {use_git_diff}")
     if rerun_init:
         cmd_parts.append("--rerun-init")
     if debug:
@@ -273,6 +619,11 @@ def cmd_sub_agent(command, prompt, cmd_config, debug=False):
         print(f"model: {model}")
 
     print_template(command, subdir="spawn", run_cmd=run_cmd)
+    emit_on_all(config, context_db_rel)
+    if cmd_config.get("no-auto-update"):
+        print_template("no-auto-update")
+    if cmd_config.get("no-auto-read"):
+        print_template("no-auto-read")
 
     # For pre-review, print user instructions separately so the agent
     # incorporates them into the plan it sends to the sub-agent
@@ -307,13 +658,25 @@ def cmd_read_all(args):
 def cmd_maintain(args, config):
     """Print instructions for the maintain workflow (audit + fix context-db)."""
     toc = find_toc_script()
+    resolve = find_resolve_script()
     context_db_rel = find_context_db()
     target_path = args.path if args.path else f"{context_db_rel}/"
 
+    if getattr(args, "load_on_start_context", False):
+        emit_on_start(config, context_db_rel)
+
     print_template("write-mechanics", toc=toc, context_db_rel=context_db_rel)
+    emit_project_folder_reinforcement(context_db_rel)
     print_template("write-content-guide")
-    print_template("maintain-instructions", toc=toc,
+    print_template("maintain-instructions", toc=toc, resolve=resolve,
                     context_db_rel=context_db_rel, target_path=target_path)
+    emit_always_read_notice(config, context_db_rel)
+    emit_on_all(config, context_db_rel)
+    cmd_config = get_command_config(config, "maintain")
+    if cmd_config.get("no-auto-update"):
+        print_template("no-auto-update")
+    if cmd_config.get("no-auto-read"):
+        print_template("no-auto-read")
 
 
 
@@ -332,6 +695,10 @@ def add_mode_flags(sub):
     sub.add_argument("--model", choices=MODEL_CHOICES)
     sub.add_argument("--config", default=".context-db.json")
     sub.add_argument("--debug", action="store_true")
+    sub.add_argument("--load-on-start-context", action="store_true",
+                     help="Also inline on_start content before the "
+                          "command output (use for sub-agents that missed "
+                          "the session-start load).")
 
 
 def dispatch_command(args, config):
@@ -349,6 +716,15 @@ def dispatch_command(args, config):
 
         return
 
+    # on_start content optionally goes at the top via --load-on-start-context
+    # (orientation-first for sub-agents that missed the on-start load).
+    # on_all content is emitted inside the handlers, placed right before
+    # the user instructions — recency matters, so last-thing-read is the
+    # always-on rules.
+    context_db_rel = find_context_db()
+    if getattr(args, "load_on_start_context", False):
+        emit_on_start(config, context_db_rel)
+
     # Build effective config: defaults ← command overrides ← CLI flags
     cmd_config = get_command_config(config, command)
 
@@ -358,6 +734,8 @@ def dispatch_command(args, config):
         cmd_config["model"] = args.model
     if hasattr(args, "context_db_only_review") and args.context_db_only_review:
         cmd_config["context-db-only-review"] = True
+    if hasattr(args, "use_git_diff") and args.use_git_diff is not None:
+        cmd_config["use-git-diff"] = args.use_git_diff
     if hasattr(args, "commit") and args.commit:
         cmd_config["commit"] = True
     if hasattr(args, "push") and args.push:
@@ -367,9 +745,9 @@ def dispatch_command(args, config):
     mode = cmd_config["mode"]
 
     if mode == "main-agent":
-        cmd_main_agent(command, prompt, cmd_config, args.debug)
+        cmd_main_agent(command, prompt, cmd_config, config, args.debug)
     elif mode == "sub-agent":
-        cmd_sub_agent(command, prompt, cmd_config, args.debug)
+        cmd_sub_agent(command, prompt, cmd_config, config, args.debug)
     elif mode == "ask":
         cmd_ask_mode(command, prompt, cmd_config, args.debug)
 
@@ -400,6 +778,10 @@ def main():
     # prompt
     p = subs.add_parser("prompt", help="Consult knowledge base")
     p.add_argument("instruction", nargs="?", default="")
+    p.add_argument("--use-git-diff", nargs="?", const=3, default=None,
+                   type=int, metavar="N",
+                   help="Prepend recent context-db git changes. N=commits "
+                        "to include (default 3, 0=uncommitted only)")
     add_mode_flags(p)
 
     # pre-review
@@ -430,10 +812,26 @@ def main():
                          help="Exhaustively read everything under a folder")
     ra.add_argument("folder", nargs="?", default="")
 
+    # read — inline file/folder content (glob-capable)
+    rd = subs.add_parser("read",
+                         help="Inline full content of files/folders/globs")
+    rd.add_argument("paths", nargs="+",
+                    help="One or more paths or glob patterns")
+
+    # load-on-start-context — session-start orientation
+    lsr = subs.add_parser(
+        "load-on-start-context",
+        help="Emit on-start context: on_start + on_all + "
+             "read mechanics/usage")
+    lsr.add_argument("--config", default=".context-db.json")
+
     # maintain
     mt = subs.add_parser("maintain", help="Audit and maintain context-db")
     mt.add_argument("path", nargs="?", default="")
     mt.add_argument("--config", default=".context-db.json")
+    mt.add_argument("--load-on-start-context", action="store_true",
+                    help="Also inline on_start content before the "
+                         "command output.")
 
     args = parser.parse_args()
 
@@ -449,6 +847,10 @@ def main():
         cmd_load_manual(args)
     elif args.command == "read-all":
         cmd_read_all(args)
+    elif args.command == "read":
+        cmd_read(args)
+    elif args.command == "load-on-start-context":
+        cmd_load_on_start_context(args, config)
     elif args.command == "maintain":
         cmd_maintain(args, config)
     else:

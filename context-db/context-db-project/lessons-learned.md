@@ -2,7 +2,7 @@
 description:
   Lessons from building context delivery — late-session recall, pre-loading
   pitfalls, prompt engineering for cheap models, relative paths, rules vs hooks
-  for startup context. Applies to the unified /context-db skill.
+  for on-start context. Applies to the unified /context-db skill.
 ---
 
 # Lessons Learned
@@ -43,6 +43,14 @@ sub-agent on track. Per-command variants are needed because "what to find"
 differs (prompt: applicable context, pre-review: applicable standards, review:
 convention violations).
 
+## Mandatory rules go last, not first
+
+Recency wins. Rules placed at the top of a composed prompt get diluted by
+everything after; rules placed just before the user's instructions stay freshest
+when the model acts. `on_all` content is emitted at the end of each command's
+output (before the user-instructions block), not prepended. The tool also adds
+no framing — file authors own their own preamble.
+
 ## Content-first ordering matters
 
 Prompt before navigation instructions produces better results. The model reads
@@ -76,11 +84,12 @@ Rules (`.claude/rules/`) survive compaction — they're system prompt, re-inject
 every turn. Hook output lives in conversation and gets compacted away. Startup
 instructions belong in rules, not hooks.
 
-The clean separation: rules tell the agent WHAT to do and WHEN (e.g., "before
-coding, run `/context-db pre-review`"). Config (`.context-db.json`) controls HOW
-commands execute — sub-agent vs main-agent, which model. The rule doesn't need
-to know about mode. Four preset rule files cover the spectrum: on-demand,
-reader, contributor, autonomous.
+The clean separation: the single rule (`rules/context-db.md`) tells the agent to
+run `/context-db load-on-start-context` on session start. Config
+(`.context-db.json`) controls HOW commands execute (sub-agent vs main-agent,
+which model) and WHICH project files are always-loaded (`on_start`, `on_all`).
+Workflow choice (reader vs contributor vs autonomous) lives in the project's
+`ON_START.md`, not in separate rule presets.
 
 ## Constrain navigation to TOC + Read only
 
@@ -127,3 +136,35 @@ better for cheap models than generalized "find any global folder" mechanisms.
 Without scope filtering, the subagent returns information about context-db
 itself when asked about a project that uses context-db. Constrain to information
 found in the knowledge base, not about the knowledge base system.
+
+## Project-folder convention: marker in frontmatter, not in read prompts
+
+context-db follows a one-`<name>-project/`-per-repo convention. Other top-level
+folders are external (global standards, symlinked shared content). The
+dispatcher detects this via `find_project_folders()` and emits a
+`# Project Folder` section on WRITE commands (update, maintain) naming the
+folder so the agent defaults to writing there. READ commands (prompt,
+pre-review, review) get no prompt-level reinforcement — instead, the maintain
+workflow ensures the project folder's descriptor frontmatter opens with "Main
+project folder for this repo." Read-side agents pick up the role distinction via
+TOC navigation (frontmatter is re-read every nav, no late-session decay).
+
+Why not reinforce on reads too: writes have direction (focus is helpful); reads
+want recall (focus actively hurts — would risk regressing the hard-won
+general-standards reading behavior, which fights the opposite problem of agents
+_under_-reading globals). The asymmetry is intentional. Maintain's frontmatter
+enforcement is the load-bearing piece that makes "let frontmatter do the
+talking" actually work for reads.
+
+## On-demand posture: per-command flags + manual entries
+
+`ON_START.md` is the right place for project orientation, but prose guidance
+fades over a session. For users who want context-db fully reactive (the agent
+neither reads nor writes unless explicitly invoked), surface that as per-command
+config flags `no-auto-read` / `no-auto-update` in `.context-db.json` — they emit
+a tagged reminder at the end of every command's output, so recency keeps the
+rule fresh. The matching manual entries (`load-manual no-auto-read` /
+`no-auto-update`) let the user load the same rule mid-session for ad-hoc
+enforcement. Default both to `false` so existing projects are unaffected; the
+startup rule (`templates/rules/context-db.md`) carries the no-auto-update text
+directly for users who want it project-wide without per-command config.

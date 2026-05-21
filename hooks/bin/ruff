@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Resolves to ~/bin/ruff-main — every user sets that up once on their machine.
+exec "$HOME/bin/ruff-main" "$@"

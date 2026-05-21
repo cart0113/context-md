@@ -1,27 +1,45 @@
 {
   // mode: main-agent | sub-agent | ask
   // model: haiku | sonnet | opus | ask
+  // no-auto-update: when true, appends a reminder telling the agent not to
+  //   write to context-db unless the user explicitly runs /context-db update
+  //   or /context-db maintain. Set per-command. Default false.
+  // no-auto-read: when true, appends a reminder telling the agent not to
+  //   browse or read context-db on its own — only when the user explicitly
+  //   runs a /context-db command. Set per-command. Default false.
   "defaults": {
     "mode": "main-agent",
     "model": "haiku"
   },
 
-  "prompt": {},
-  "pre-review": {},
+  "prompt": { "no-auto-update": false },
+  "pre-review": { "no-auto-update": false },
 
   // reviews default to sonnet for deeper reasoning
   "review": {
-    "model": "sonnet"
+    "model": "sonnet",
+    "no-auto-update": false
   },
 
   // update always runs in main-agent (writes files)
   "update": {
     "mode": "main-agent",
-    "model": "sonnet"
+    "model": "sonnet",
+    "no-auto-update": false
   },
 
   // maintain always runs in main-agent (writes files)
   "maintain": {
-    "mode": "main-agent"
-  }
+    "mode": "main-agent",
+    "no-auto-update": false
+  },
+
+  // Inlined once per session at the top of /context-db load-on-start-context.
+  // Use for orienting content the agent needs to work on the project
+  // (heavier material is OK here — loads once).
+  "on_start": ["*-project/ON_START.md"],
+
+  // Inlined right before user instructions on every /context-db call.
+  // Keep BRIEF — real estate is at a premium.
+  "on_all": ["*-project/ON_ALL.md"]
 }

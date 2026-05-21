@@ -25,4 +25,6 @@ Symlink external context-db folders into your `context-db/` directory and
 Because TOCs are generated on the fly, there are no static files to get out of
 sync.
 
-See `cross-project-sharing.md` for the full pattern.
+See `../cross-project-sharing.md` for the full pattern, and
+`./cross-reference-paths.md` for how cross-references inside symlinked content
+are read correctly.
