@@ -5,8 +5,6 @@ __pycache__/
 .env
 *.tmp
 
-.claude
-.cursor
 .playwright-mcp/
 
 node_modules/
